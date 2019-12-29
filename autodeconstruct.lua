@@ -143,21 +143,19 @@ function autodeconstruct.order_deconstruction(drill)
         deconstruct = true
     end
 
-    if deconstruct == true then
+    if deconstruct == true and drill.entity.minable then
         drill.entity.order_deconstruction(drill.entity.force)
         if autodeconstruct.remove_target then
             target = drill.entity.drop_target
-            if target ~= nil then
+            if target ~= nil and target.minable then
                 if target.type == "logistic-container" or target.type == "container" then
                     targeting = find_targeting(target)
                     if targeting ~= nil then
                         for i = 1, #targeting do
                             if not targeting[i].to_be_deconstructed(targeting[i].force) then return end
                         end
-                            -- we are the only one targeting
-                            target.order_deconstruction(target.force)
-                    else
-                        print('nothing is targeting, this should never happen')
+                        -- we are the only one targeting
+                        target.order_deconstruction(target.force)
                     end
                 end
 
