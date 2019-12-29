@@ -135,7 +135,7 @@ function autodeconstruct.order_deconstruction(drill)
     
     local deconstruct = false
 
-    if global.wait_for_robots then
+    if autodeconstruct.wait_for_robots then
         logistic_network = drill.entity.surface.find_logistic_network_by_position(drill.entity.position, drill.entity.force.name)
         if logistic_network ~= nil then
             if logistic_network.available_construction_robots > 0 then
@@ -150,7 +150,7 @@ function autodeconstruct.order_deconstruction(drill)
         drill.entity.order_deconstruction(drill.entity.force)
         --msg_all({"autodeconstruct-notify", util.positiontostr(drill.entity.position) .. " marked for deconstruction"})
 
-        if global.remove_target then
+        if autodeconstruct.remove_target then
             target = drill.entity.drop_target
             if target ~= nil then
 
