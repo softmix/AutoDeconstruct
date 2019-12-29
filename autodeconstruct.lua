@@ -89,7 +89,7 @@ end
 
 function autodeconstruct.init_globals()
     global.max_radius = 0.99
-    drill_entities = find_all_entities('mining-drill')
+    local drill_entities = find_all_entities('mining-drill')
     for _, drill_entity in pairs(drill_entities) do
         autodeconstruct.check_drill(drill_entity)
     end
