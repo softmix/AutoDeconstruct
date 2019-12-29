@@ -29,40 +29,46 @@ local function find_all_entities(entity_type)
     return entities
 end
 
+local function find_target(entity)
+    if entity.drop_target then
+        return entity.drop_target
+    else
+        local entities = entity.surface.find_entities_filtered{position=entity.drop_position}
+        if global.debug then msg_all({"autodeconstruct-debug", "found " .. entities[1].name .. " at " .. util.positiontostr(entities[1].position)}) end
+        return entities[1]
+    end
+end
+
 local function find_targeting(entity)
-    local range = 5
+    local range = global.max_range
     local position = entity.position
 
     local top_left = {x = position.x - range, y = position.y - range}
     local bottom_right = {x = position.x + range, y = position.y + range}
 
-    local surface = game.surfaces['nauvis']
+    local surface = entity.surface
     local entities = {}
     local targeting = {}
 
     local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
     for i = 1, #entities do
-        if entities[i].drop_target and util.positiontostr(entities[i].drop_target.position) == util.positiontostr(position) then
-            targeting[#targeting + 1] = entities[i]
-        elseif math.abs(entities[i].drop_position.x - position.x) < 1 and math.abs(entities[i].drop_position.y - position.y) < 1 then
+        if find_target(entities[i]) == entity then 
             targeting[#targeting + 1] = entities[i]
         end
     end
 
     entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='inserter'}
     for i = 1, #entities do
-        if entities[i].drop_target and util.positiontostr(entities[i].drop_target.position) == util.positiontostr(position) then
-            targeting[#targeting + 1] = entities[i]
-        elseif math.abs(entities[i].drop_position.x - position.x) < 1 and math.abs(entities[i].drop_position.y - position.y) < 1 then
+        if find_target(entities[i]) == entity then 
             targeting[#targeting + 1] = entities[i]
         end
     end
-
+    if global.debug then msg_all({"autodeconstruct-debug", "found " .. #targeting .. " targeting"}) end
     return targeting
 end
 
 local function find_drills(entity)
-    local range = entity.force.technologies["data-dummy-max-range"].research_unit_energy / 60 / 2
+    local range = global.max_range
     local position = entity.position
 
     local top_left = {x = position.x - range, y = position.y - range}
@@ -73,17 +79,21 @@ local function find_drills(entity)
     local targeting = {}
 
     local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
+    if global.debug then msg_all({"autodeconstruct-debug", "found " .. #entities  .. " drills"}) end
     for i = 1, #entities do
         -- hack because resource_searching_radius is hidden at runtime, see data-final-fixes.lua
         drill_range = entities[i].force.technologies["data-dummy-" .. entities[i].name].research_unit_energy / 60
         if math.abs(entities[i].position.x - position.x) < drill_range and math.abs(entities[i].position.y - position.y) < drill_range then
+            if global.debug then msg_all({"autodeconstruct-debug", "checking drill " .. i }) end
             autodeconstruct.check_drill(entities[i])
         end
     end
 end
 
 function autodeconstruct.init_globals()
-    global = {}
+    global = {
+        max_range = game.forces.neutral.technologies["data-dummy-max-range"].research_unit_energy / 60 / 2
+    }
     drill_entities = find_all_entities('mining-drill')
     for _, drill_entity in pairs(drill_entities) do
         autodeconstruct.check_drill(drill_entity)
@@ -91,7 +101,10 @@ function autodeconstruct.init_globals()
 end
 
 function autodeconstruct.on_resource_depleted(event)
-    if event.entity.prototype.resource_category ~= 'basic-solid' or event.entity.prototype.infinite_resource ~= false then return end
+    if event.entity.prototype.resource_category ~= 'basic-solid' or event.entity.prototype.infinite_resource ~= false then
+        if global.debug then msg_all({"autodeconstruct-debug", game.tick .. " resource_category " .. event.entity.prototype.resource_category .. " infinite_resource " .. (event.entity.prototype.infinite_resource == true and "true" or "false" )}) end
+        return
+    end
     drill = find_drills(event.entity)
 end
 
@@ -106,11 +119,15 @@ function autodeconstruct.check_drill(drill)
     for i = 1, #resources do
         if resources[i].amount > 0 then return end
     end
+    if global.debug then msg_all({"autodeconstruct-debug", " found no resources for drill at " .. util.positiontostr(drill.position) .. ", deconstructing"}) end
     autodeconstruct.order_deconstruction(drill)
 end
 
 function autodeconstruct.order_deconstruction(drill)
-    if drill.to_be_deconstructed(drill.force) then return end
+    if drill.to_be_deconstructed(drill.force) then
+        if global.debug then msg_all({"autodeconstruct-debug", debug.getinfo(2).name, " already marked"}) end
+        return
+    end
     
     local deconstruct = false
 --[[ #TODO
@@ -131,9 +148,13 @@ config.lua: autodeconstruct.wait_for_robots = false
 
 --]]
     if deconstruct == true and drill.minable then
-        drill.order_deconstruction(drill.force)
+        if drill.order_deconstruction(drill.force) then
+            if global.debug then msg_all({"autodeconstruct-debug", drill.name .. " at " .. util.positiontostr(drill.position) .. " success"}) end
+        else
+            if global.debug then msg_all({"autodeconstruct-debug", drill.name .. " at " .. util.positiontostr(drill.position) .. " success"}) end
+        end
         if autodeconstruct.remove_target then
-            target = drill.drop_target
+            target = find_target(drill)
             if target ~= nil and target.minable then
                 if target.type == "logistic-container" or target.type == "container" then
                     targeting = find_targeting(target)
@@ -142,7 +163,11 @@ config.lua: autodeconstruct.wait_for_robots = false
                             if not targeting[i].to_be_deconstructed(targeting[i].force) then return end
                         end
                         -- we are the only one targeting
-                        target.order_deconstruction(target.force)
+                        if target.order_deconstruction(target.force) then
+                            if global.debug then msg_all({"autodeconstruct-debug", target.name .. " at " .. util.positiontostr(target.position) .. " success"}) end
+                        else
+                            if global.debug then msg_all({"autodeconstruct-debug", target.name .. " at " .. util.positiontostr(target.position) .. " failed"}) end
+                        end
                     end
                 end
 --[[ #TODO
