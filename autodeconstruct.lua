@@ -1,5 +1,5 @@
-require "defines"
 require "util"
+require "config"
 
 global = {
     drills = {},
@@ -7,8 +7,6 @@ global = {
     to_be_forgotten = {},
     loaded = false,
 }
-
-require "config"
 
 local function find_resource_at(surface, position, range, resource_category)
     local resource_category = resource_category or 'basic-solid'
@@ -92,15 +90,14 @@ function autodeconstruct.add_drill(new_entity)
     -- hack because resource_searching_radius is hidden at runtime, see data-final-fixes.lua
     local range = new_entity.force.technologies["data-dummy-" .. new_entity.name].research_unit_energy / 60
 
-    if range == nil then return end --return msg_all({"autodeconstruct-notify", new_entity.name .. " doesn't have an associated range"}) end
-    if range < .5 then return end --return msg_all({"autodeconstruct-notify", new_entity.name .. " has pumpjack level range"}) end
+    if range == nil then return end 
+    if range < .5 then return end
 
     drill = {
         entity = new_entity,
         resources = find_resource_at(new_entity.surface, new_entity.position, range)
     }
     table.insert(global.drills, drill)
-    --msg_all({"autodeconstruct-notify", "added drill at x:" .. new_entity.position.x .. " y:" .. new_entity.position.y})
 end
 
 function autodeconstruct.update_drills(event)
@@ -148,12 +145,9 @@ function autodeconstruct.order_deconstruction(drill)
 
     if deconstruct == true then
         drill.entity.order_deconstruction(drill.entity.force)
-        --msg_all({"autodeconstruct-notify", util.positiontostr(drill.entity.position) .. " marked for deconstruction"})
-
         if autodeconstruct.remove_target then
             target = drill.entity.drop_target
             if target ~= nil then
-
                 if target.type == "logistic-container" or target.type == "container" then
                     targeting = find_targeting(target)
                     if targeting ~= nil then
@@ -162,7 +156,6 @@ function autodeconstruct.order_deconstruction(drill)
                         end
                             -- we are the only one targeting
                             target.order_deconstruction(target.force)
-                            --msg_all({"autodeconstruct-notify", util.positiontostr(target.position) .. " marked for deconstruction"})
                     else
                         print('nothing is targeting, this should never happen')
                     end
@@ -171,8 +164,6 @@ function autodeconstruct.order_deconstruction(drill)
                 if target.type == "transport-belt" then
                     -- find entities with this belt as target
                 end
-
-
             end
         end
     end

@@ -1,4 +1,3 @@
-require "defines"
 require "autodeconstruct"
 
 function msg_all(message)
