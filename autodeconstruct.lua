@@ -1,7 +1,7 @@
 require "util"
 require "config"
 
-local function find_resource_at(surface, position, range, resource_category)
+local function find_resources(surface, position, range, resource_category)
     local resource_category = resource_category or 'basic-solid'
     local top_left = {x = position.x - range, y = position.y - range}
     local bottom_right = {x = position.x + range, y = position.y + range}
@@ -40,7 +40,7 @@ local function find_target(entity)
 end
 
 local function find_targeting(entity)
-    local range = global.max_range
+    local range = global.max_radius
     local position = entity.position
 
     local top_left = {x = position.x - range, y = position.y - range}
@@ -68,32 +68,26 @@ local function find_targeting(entity)
 end
 
 local function find_drills(entity)
-    local range = global.max_range
     local position = entity.position
+    local surface = entity.surface
+    
+    local top_left = {x = position.x - global.max_radius, y = position.y - global.max_radius}
+    local bottom_right = {x = position.x + global.max_radius, y = position.y + global.max_radius}
 
-    local top_left = {x = position.x - range, y = position.y - range}
-    local bottom_right = {x = position.x + range, y = position.y + range}
-
-    local surface = game.surfaces['nauvis']
     local entities = {}
     local targeting = {}
 
     local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
     if global.debug then msg_all({"autodeconstruct-debug", "found " .. #entities  .. " drills"}) end
     for i = 1, #entities do
-        -- hack because resource_searching_radius is hidden at runtime, see data-final-fixes.lua
-        drill_range = entities[i].force.technologies["data-dummy-" .. entities[i].name].research_unit_energy / 60
-        if math.abs(entities[i].position.x - position.x) < drill_range and math.abs(entities[i].position.y - position.y) < drill_range then
-            if global.debug then msg_all({"autodeconstruct-debug", "checking drill " .. i }) end
+        if math.abs(entities[i].position.x - position.x) < entities[i].prototype.mining_drill_radius and math.abs(entities[i].position.y - position.y) < entities[i].prototype.mining_drill_radius then
             autodeconstruct.check_drill(entities[i])
         end
     end
 end
 
 function autodeconstruct.init_globals()
-    global = {
-        max_range = game.forces.neutral.technologies["data-dummy-max-range"].research_unit_energy / 60 / 2
-    }
+    global.max_radius = 0.99
     drill_entities = find_all_entities('mining-drill')
     for _, drill_entity in pairs(drill_entities) do
         autodeconstruct.check_drill(drill_entity)
@@ -102,30 +96,49 @@ end
 
 function autodeconstruct.on_resource_depleted(event)
     if event.entity.prototype.resource_category ~= 'basic-solid' or event.entity.prototype.infinite_resource ~= false then
-        if global.debug then msg_all({"autodeconstruct-debug", game.tick .. " resource_category " .. event.entity.prototype.resource_category .. " infinite_resource " .. (event.entity.prototype.infinite_resource == true and "true" or "false" )}) end
+        if global.debug then msg_all({"autodeconstruct-debug", "on_resource_depleted", game.tick .. " amount " .. event.entity.amount .. " resource_category " .. event.entity.prototype.resource_category .. " infinite_resource " .. (event.entity.prototype.infinite_resource == true and "true" or "false" )}) end
         return
     end
     drill = find_drills(event.entity)
 end
 
 function autodeconstruct.check_drill(drill)
-    -- hack because resource_searching_radius is hidden at runtime, see data-final-fixes.lua
-    local range = drill.force.technologies["data-dummy-" .. drill.name].research_unit_energy / 60
-
-    if range == nil then return end 
-    if range < .5 then return end
+    if drill.mining_target ~= nil and drill.mining_target.valid then
+        if drill.mining_target.amount > 0 then return end -- this should also filter out pumpjacks and infinite resources
+    end
     
-    resources = find_resource_at(drill.surface, drill.position, range)
+    local mining_drill_radius = drill.prototype.mining_drill_radius
+    if mining_drill_radius > global.max_radius then
+        global.max_radius = mining_drill_radius
+    end
+
+    if mining_drill_radius == nil then return end 
+    
+    resources = find_resources(drill.surface, drill.position, mining_drill_radius)
     for i = 1, #resources do
         if resources[i].amount > 0 then return end
     end
-    if global.debug then msg_all({"autodeconstruct-debug", " found no resources for drill at " .. util.positiontostr(drill.position) .. ", deconstructing"}) end
+    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " found no resources, deconstructing"}) end
     autodeconstruct.order_deconstruction(drill)
 end
 
+function autodeconstruct.on_canceled_deconstruction(event)
+    if event.player_index ~= nil or event.entity.type ~= 'mining-drill' then return end
+    if global.debug then msg_all({"autodeconstruct-debug", "on_canceled_deconstruction", util.positiontostr(event.entity.position) .. " deconstruction timed out, checking again"}) end
+    autodeconstruct.check_drill(event.entity)
+end
+
+function autodeconstruct.on_built_entity(event)
+    if event.created_entity.type ~= 'mining-drill' then return end
+    if event.created_entity.prototype.mining_drill_radius > global.max_radius then
+        global.max_radius = event.created_entity.prototype.mining_drill_radius
+        if global.debug then msg_all({"autodeconstruct-debug", "on_built_entity", "global.max_radius updated to " .. global.max_radius}) end
+    end
+end
+    
 function autodeconstruct.order_deconstruction(drill)
     if drill.to_be_deconstructed(drill.force) then
-        if global.debug then msg_all({"autodeconstruct-debug", debug.getinfo(2).name, " already marked"}) end
+        if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)" already marked"}) end
         return
     end
     
@@ -149,9 +162,9 @@ config.lua: autodeconstruct.wait_for_robots = false
 --]]
     if deconstruct == true and drill.minable then
         if drill.order_deconstruction(drill.force) then
-            if global.debug then msg_all({"autodeconstruct-debug", drill.name .. " at " .. util.positiontostr(drill.position) .. " success"}) end
+            if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)  .. " " .. drill.name .. " success"}) end
         else
-            if global.debug then msg_all({"autodeconstruct-debug", drill.name .. " at " .. util.positiontostr(drill.position) .. " success"}) end
+            msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. "failed to order deconstruction on " .. drill.name })
         end
         if autodeconstruct.remove_target then
             target = find_target(drill)
@@ -163,10 +176,13 @@ config.lua: autodeconstruct.wait_for_robots = false
                             if not targeting[i].to_be_deconstructed(targeting[i].force) then return end
                         end
                         -- we are the only one targeting
+                        if target.to_be_deconstructed(target.force) then
+                            target.cancel_deconstruction(target.force)
+                        end
                         if target.order_deconstruction(target.force) then
-                            if global.debug then msg_all({"autodeconstruct-debug", target.name .. " at " .. util.positiontostr(target.position) .. " success"}) end
+                            if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(target.position) .. " " .. target.name .. " success"}) end
                         else
-                            if global.debug then msg_all({"autodeconstruct-debug", target.name .. " at " .. util.positiontostr(target.position) .. " failed"}) end
+                            msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. "failed to order deconstruction on " .. target.name})
                         end
                     end
                 end

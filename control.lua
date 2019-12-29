@@ -29,12 +29,22 @@ script.on_configuration_changed(function()
     if err then msg_all({"autodeconstruct-err-generic", err}) end
 end)
 
-script.on_event(defines.events.on_player_created, function(event)
-    local _, err = pcall(autodeconstruct.init_globals, event)
-    if err then msg_all({"autodeconstruct-err-specific", "on_player_created", err}) end
+script.on_event(defines.events.on_canceled_deconstruction, function(event)
+    local _, err = pcall(autodeconstruct.on_canceled_deconstruction, event)
+    if err then msg_all({"autodeconstruct-err-specific", "on_canceled_deconstruction", err}) end
 end)
 
-script.on_event(defines.events.on_resource_depleted , function(event)
+script.on_event(defines.events.on_resource_depleted, function(event)
     local _, err = pcall(autodeconstruct.on_resource_depleted, event)
     if err then msg_all({"autodeconstruct-err-specific", "on_resource_depleted", err}) end
+end)
+
+script.on_event(defines.events.on_robot_built_entity, function(event)
+    local _, err = pcall(autodeconstruct.on_built_entity, event)
+    if err then msg_all({"autodeconstruct-err-specific", "on_robot_built_entity", err}) end
+end)
+
+script.on_event(defines.events.on_built_entity, function(event)
+    local _, err = pcall(autodeconstruct.on_built_entity, event)
+    if err then msg_all({"autodeconstruct-err-specific", "on_built_entity", err}) end
 end)
