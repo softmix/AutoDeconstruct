@@ -160,11 +160,11 @@ config.lua: autodeconstruct.wait_for_robots = false
 --[[ END TODO
 
 --]]
-    if deconstruct == true and drill.minable then
+    if deconstruct == true and drill.minable and drill.has_flag("not-deconstructable") == false then
         if drill.order_deconstruction(drill.force) then
             if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)  .. " " .. drill.name .. " success"}) end
         else
-            msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. "failed to order deconstruction on " .. drill.name })
+            msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " failed to order deconstruction on " .. drill.name })
         end
         if autodeconstruct.remove_target then
             target = find_target(drill)
@@ -182,7 +182,7 @@ config.lua: autodeconstruct.wait_for_robots = false
                         if target.order_deconstruction(target.force) then
                             if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(target.position) .. " " .. target.name .. " success"}) end
                         else
-                            msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. "failed to order deconstruction on " .. target.name})
+                            msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. " failed to order deconstruction on " .. target.name})
                         end
                     end
                 end
