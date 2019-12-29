@@ -29,9 +29,9 @@ script.on_configuration_changed(function()
     if err then msg_all({"autodeconstruct-err-generic", err}) end
 end)
 
-script.on_event(defines.events.on_canceled_deconstruction, function(event)
-    local _, err = pcall(autodeconstruct.on_canceled_deconstruction, event)
-    if err then msg_all({"autodeconstruct-err-specific", "on_canceled_deconstruction", err}) end
+script.on_event(defines.events.on_cancelled_deconstruction, function(event)
+    local _, err = pcall(autodeconstruct.on_cancelled_deconstruction, event)
+    if err then msg_all({"autodeconstruct-err-specific", "on_cancelled_deconstruction", err}) end
 end)
 
 script.on_event(defines.events.on_resource_depleted, function(event)

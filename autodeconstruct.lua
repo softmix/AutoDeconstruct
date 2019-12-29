@@ -1,17 +1,16 @@
 require "util"
 autodeconstruct = {}
 
-local function find_resources(surface, position, range, resource_category, mining_power)
+local function find_resources(surface, position, range, resource_category)
 	
     local resource_category = resource_category or 'basic-solid'
-	local mining_power = mining_power or 2.5 -- base value for burner drill
     local top_left = {x = position.x - range, y = position.y - range}
     local bottom_right = {x = position.x + range, y = position.y + range}
 
     local resources = surface.find_entities_filtered{area={top_left, bottom_right}, type='resource'}
     categorized = {}
     for _, resource in pairs(resources) do
-        if resource.prototype.resource_category == resource_category and resource.prototype.mineable_properties["hardness"] <= mining_power then
+        if resource.prototype.resource_category == resource_category then
             table.insert(categorized, resource)
         end
     end
@@ -116,10 +115,7 @@ function autodeconstruct.check_drill(drill)
 
     if mining_drill_radius == nil then return end
 
-	local mining_power = drill.prototype.mining_power
-	if mining_power == nil then return end
-	
-    resources = find_resources(drill.surface, drill.position, mining_drill_radius, 'basic-solid', mining_power)
+    resources = find_resources(drill.surface, drill.position, mining_drill_radius, 'basic-solid')
     for i = 1, #resources do
         if resources[i].amount > 0 then return end
     end
@@ -127,9 +123,9 @@ function autodeconstruct.check_drill(drill)
     autodeconstruct.order_deconstruction(drill)
 end
 
-function autodeconstruct.on_canceled_deconstruction(event)
+function autodeconstruct.on_cancelled_deconstruction(event)
     if event.player_index ~= nil or event.entity.type ~= 'mining-drill' then return end
-    if global.debug then msg_all({"autodeconstruct-debug", "on_canceled_deconstruction", util.positiontostr(event.entity.position) .. " deconstruction timed out, checking again"}) end
+    if global.debug then msg_all({"autodeconstruct-debug", "on_cancelled_deconstruction", util.positiontostr(event.entity.position) .. " deconstruction timed out, checking again"}) end
     autodeconstruct.check_drill(event.entity)
 end
 
