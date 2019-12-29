@@ -1,5 +1,5 @@
 require "util"
-require "config"
+autodeconstruct = {}
 
 local function find_resources(surface, position, range, resource_category)
     local resource_category = resource_category or 'basic-solid'
@@ -52,14 +52,14 @@ local function find_targeting(entity)
 
     local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
     for i = 1, #entities do
-        if find_target(entities[i]) == entity then 
+        if find_target(entities[i]) == entity then
             targeting[#targeting + 1] = entities[i]
         end
     end
 
     entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='inserter'}
     for i = 1, #entities do
-        if find_target(entities[i]) == entity then 
+        if find_target(entities[i]) == entity then
             targeting[#targeting + 1] = entities[i]
         end
     end
@@ -70,7 +70,7 @@ end
 local function find_drills(entity)
     local position = entity.position
     local surface = entity.surface
-    
+
     local top_left = {x = position.x - global.max_radius, y = position.y - global.max_radius}
     local bottom_right = {x = position.x + global.max_radius, y = position.y + global.max_radius}
 
@@ -106,14 +106,14 @@ function autodeconstruct.check_drill(drill)
     if drill.mining_target ~= nil and drill.mining_target.valid then
         if drill.mining_target.amount > 0 then return end -- this should also filter out pumpjacks and infinite resources
     end
-    
+
     local mining_drill_radius = drill.prototype.mining_drill_radius
     if mining_drill_radius > global.max_radius then
         global.max_radius = mining_drill_radius
     end
 
-    if mining_drill_radius == nil then return end 
-    
+    if mining_drill_radius == nil then return end
+
     resources = find_resources(drill.surface, drill.position, mining_drill_radius)
     for i = 1, #resources do
         if resources[i].amount > 0 then return end
@@ -135,44 +135,31 @@ function autodeconstruct.on_built_entity(event)
         if global.debug then msg_all({"autodeconstruct-debug", "on_built_entity", "global.max_radius updated to " .. global.max_radius}) end
     end
 end
-    
+
 function autodeconstruct.order_deconstruction(drill)
     if drill.to_be_deconstructed(drill.force) then
         if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " already marked"}) end
         return
     end
-    
-    local deconstruct = false
---[[ #TODO
-config.lua: autodeconstruct.wait_for_robots = false
-    if autodeconstruct.wait_for_robots then
-        logistic_network = drill.surface.find_logistic_network_by_position(drill.position, drill.force.name)
-        if logistic_network ~= nil then
-            if logistic_network.available_construction_robots > 0 then
-                deconstruct = true
-            end
-        end
-    else
-        deconstruct = true
-    end
---]]
-    deconstruct = true
---[[ END TODO
 
---]]
-	if drill.fluidbox and #drill.fluidbox > 0 then 
+    local deconstruct = true
+
+	if drill.fluidbox and #drill.fluidbox > 0 then
 		deconstruct = false
 	end
-		
-    if deconstruct == true and drill.minable and drill.has_flag("not-deconstructable") == false then
+
+	if next(drill.circuit_connected_entities.red) ~= nil or next(drill.circuit_connected_entities.green) ~= nil then
+		deconstruct = false
+	end
+    if deconstruct == true and drill.minable and drill.prototype.selectable_in_game and drill.has_flag("not-deconstructable") == false then
         if drill.order_deconstruction(drill.force) then
             if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)  .. " " .. drill.name .. " success"}) end
         else
             msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " failed to order deconstruction on " .. drill.name })
         end
-        if autodeconstruct.remove_target then
+        if settings.global['autodeconstruct-remove-target'].value then
             target = find_target(drill)
-            if target ~= nil and target.minable then
+            if target ~= nil and target.minable and target.prototype.selectable_in_game then
                 if target.type == "logistic-container" or target.type == "container" then
                     targeting = find_targeting(target)
                     if targeting ~= nil then
