@@ -1,15 +1,17 @@
 require "util"
 autodeconstruct = {}
 
-local function find_resources(surface, position, range, resource_category)
+local function find_resources(surface, position, range, resource_category, mining_power)
+	
     local resource_category = resource_category or 'basic-solid'
+	local mining_power = mining_power or 2.5 -- base value for burner drill
     local top_left = {x = position.x - range, y = position.y - range}
     local bottom_right = {x = position.x + range, y = position.y + range}
 
     local resources = surface.find_entities_filtered{area={top_left, bottom_right}, type='resource'}
     categorized = {}
     for _, resource in pairs(resources) do
-        if resource.prototype.resource_category == resource_category then
+        if resource.prototype.resource_category == resource_category and resource.prototype.mineable_properties["hardness"] <= mining_power then
             table.insert(categorized, resource)
         end
     end
@@ -114,7 +116,10 @@ function autodeconstruct.check_drill(drill)
 
     if mining_drill_radius == nil then return end
 
-    resources = find_resources(drill.surface, drill.position, mining_drill_radius)
+	local mining_power = drill.prototype.mining_power
+	if mining_power == nil then return end
+	
+    resources = find_resources(drill.surface, drill.position, mining_drill_radius, 'basic-solid', mining_power)
     for i = 1, #resources do
         if resources[i].amount > 0 then return end
     end
