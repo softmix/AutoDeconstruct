@@ -67,6 +67,10 @@ local function find_targeting(entity)
 end
 
 function autodeconstruct.init_globals()
+    if not global.drills then global.drills = {} end
+    if not global.known_positions then global.known_positions = {} end
+    if not global.to_be_forgotten then global.to_be_forgotten = {} end
+
     global.loaded = true
     drill_entities = find_all_entities('mining-drill')
     for _, drill_entity in pairs(drill_entities) do
