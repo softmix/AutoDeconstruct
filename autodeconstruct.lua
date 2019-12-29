@@ -1,7 +1,7 @@
 require "defines"
 require "util"
 
-autodeconstruct = {
+global = {
     drills = {},
     known_positions = {},
     to_be_forgotten = {},
@@ -67,12 +67,12 @@ local function find_targeting(entity)
 end
 
 function autodeconstruct.init_globals()
-    autodeconstruct.loaded = true
+    global.loaded = true
     drill_entities = find_all_entities('mining-drill')
     for _, drill_entity in pairs(drill_entities) do
         local where = util.positiontostr(drill_entity.position)
-        if autodeconstruct.known_positions[where] then else
-            autodeconstruct.known_positions[where] = true
+        if global.known_positions[where] then else
+            global.known_positions[where] = true
             autodeconstruct.add_drill(drill_entity)
         end
     end
@@ -95,45 +95,43 @@ function autodeconstruct.add_drill(new_entity)
         entity = new_entity,
         resources = find_resource_at(new_entity.surface, new_entity.position, range)
     }
-    table.insert(autodeconstruct.drills, drill)
+    table.insert(global.drills, drill)
+    --msg_all({"autodeconstruct-notify", "added drill at x:" .. new_entity.position.x .. " y:" .. new_entity.position.y})
 end
 
 function autodeconstruct.update_drills(event)
-    local drill_to_update = 1 + event.tick % #autodeconstruct.drills
+    local drill_to_update = 1 + event.tick % #global.drills
 
-    drill = autodeconstruct.drills[drill_to_update]
+    drill = global.drills[drill_to_update]
     if drill.entity and drill.entity.valid then
         autodeconstruct.update_drill(drill, update_cycle)
     else
-        autodeconstruct.to_be_forgotten[drill_to_update] = true
+        global.to_be_forgotten[drill_to_update] = true
     end
 
     if drill_to_update == 1 then
-        for i = #autodeconstruct.drills, 1, -1 do
-            if autodeconstruct.to_be_forgotten[i] == true then
-                table.remove(autodeconstruct.drills, i)
+        for i = #global.drills, 1, -1 do
+            if global.to_be_forgotten[i] == true then
+                table.remove(global.drills, i)
             end
         end
-        autodeconstruct.to_be_forgotten = {}
+        global.to_be_forgotten = {}
     end
 end
 
 function autodeconstruct.update_drill(drill, update_cycle)
-    local amount = 0
     for i = #drill.resources, 1, -1 do
         if drill.resources[i].valid then return end -- if any of the resource nodes are valid we don't need to continue checking
     end
-    if amount == 0 then
-        autodeconstruct.order_deconstruction(drill)
-    end
+    autodeconstruct.order_deconstruction(drill)
 end
 
 function autodeconstruct.order_deconstruction(drill)
     if drill.entity.to_be_deconstructed(drill.entity.force) then return end
-
+    
     local deconstruct = false
 
-    if autodeconstruct.wait_for_robots then
+    if global.wait_for_robots then
         logistic_network = drill.entity.surface.find_logistic_network_by_position(drill.entity.position, drill.entity.force.name)
         if logistic_network ~= nil then
             if logistic_network.available_construction_robots > 0 then
@@ -148,7 +146,7 @@ function autodeconstruct.order_deconstruction(drill)
         drill.entity.order_deconstruction(drill.entity.force)
         --msg_all({"autodeconstruct-notify", util.positiontostr(drill.entity.position) .. " marked for deconstruction"})
 
-        if autodeconstruct.remove_target then
+        if global.remove_target then
             target = drill.entity.drop_target
             if target ~= nil then
 
@@ -160,6 +158,7 @@ function autodeconstruct.order_deconstruction(drill)
                         end
                             -- we are the only one targeting
                             target.order_deconstruction(target.force)
+                            --msg_all({"autodeconstruct-notify", util.positiontostr(target.position) .. " marked for deconstruction"})
                     else
                         print('nothing is targeting, this should never happen')
                     end
@@ -176,8 +175,8 @@ function autodeconstruct.order_deconstruction(drill)
 end
 
 function autodeconstruct.on_tick(event)
-    if not autodeconstruct.loaded then autodeconstruct.init_globals() end -- because script.on_load doesn't have access to game
-    if #autodeconstruct.drills > 0 then
+    if not global.loaded then global.init_globals() end -- because script.on_load doesn't have access to game
+    if #global.drills > 0 then
         autodeconstruct.update_drills(event)
     end
 end
