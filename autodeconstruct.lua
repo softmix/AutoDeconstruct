@@ -138,7 +138,7 @@ end
     
 function autodeconstruct.order_deconstruction(drill)
     if drill.to_be_deconstructed(drill.force) then
-        if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)" already marked"}) end
+        if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " already marked"}) end
         return
     end
     
@@ -160,6 +160,10 @@ config.lua: autodeconstruct.wait_for_robots = false
 --[[ END TODO
 
 --]]
+	if drill.fluidbox and #drill.fluidbox > 0 then 
+		deconstruct = false
+	end
+		
     if deconstruct == true and drill.minable and drill.has_flag("not-deconstructable") == false then
         if drill.order_deconstruction(drill.force) then
             if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)  .. " " .. drill.name .. " success"}) end
