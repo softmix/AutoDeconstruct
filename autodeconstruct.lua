@@ -10,18 +10,19 @@ autodeconstruct = {
 
 require "config"
 
-local function find_resource_at(surface, position, range)
+local function find_resource_at(surface, position, range, resource_category)
+	local resource_category = resource_category or 'basic-solid'
     local top_left = {x = position.x - range, y = position.y - range}
     local bottom_right = {x = position.x + range, y = position.y + range}
 
-    local stuff = surface.find_entities_filtered{area={top_left, bottom_right}, type='resource'}
-	solid = {}
-	for i = 1, #stuff do
-		if stuff[i].prototype.resource_category == 'basic-solid' then
-			solid[#solid + 1] = stuff[i]
+    local resources = surface.find_entities_filtered{area={top_left, bottom_right}, type='resource'}
+	categorized = {}
+	for _, resource in pairs(resources) do
+		if resource.prototype.resource_category == resource_category then
+			table.insert(categorized, resource)
 		end
 	end
-    return solid
+    return categorized
 end
 
 local function find_all_entities(entity_type)
@@ -35,6 +36,34 @@ local function find_all_entities(entity_type)
 	end
   end
   return entities
+end
+
+local function find_targeting(entity)
+	local range = 5
+	local position = entity.position
+	
+	local top_left = {x = position.x - range, y = position.y - range}
+    local bottom_right = {x = position.x + range, y = position.y + range}
+	
+	local surface = game.surfaces['nauvis']
+	local entities = {}
+	local targeting = {}
+	
+	local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
+	for i = 1, #entities do
+		if entities[i].drop_target and util.positiontostr(entities[i].drop_target.position) == util.positiontostr(position) then
+			targeting[#targeting + 1] = entities[i]
+		end
+	end
+	
+	entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='inserter'}
+	for i = 1, #entities do
+		if entities[i].drop_target and util.positiontostr(entities[i].drop_target.position) == util.positiontostr(position) then
+			targeting[#targeting + 1] = entities[i]
+		end
+	end
+
+	return targeting
 end
 
 function autodeconstruct.init_globals()
@@ -77,7 +106,7 @@ function autodeconstruct.update_drills(event)
 	
 	if drill_to_update == 1 then
 		for i = #autodeconstruct.drills, 1, -1 do
-			if autodeconstruct.to_be_forgotten[i] then
+			if autodeconstruct.to_be_forgotten[i] == true then
 				table.remove(autodeconstruct.drills, i)
 			end
 		end
@@ -113,6 +142,32 @@ function autodeconstruct.order_deconstruction(drill)
 	
 	if deconstruct == true then
 		drill.entity.order_deconstruction(drill.entity.force)
+		--msg_all({"autodeconstruct-notify", util.positiontostr(drill.entity.position) .. " marked for deconstruction"})
+		
+		if autodeconstruct.remove_target then
+			target = drill.entity.drop_target
+			if target ~= nil then
+			
+				if target.type == "logistic-container" or target.type == "container" then
+					targeting = find_targeting(target)
+					if targeting ~= nil then
+						for i = 1, #targeting do
+							if not targeting[i].to_be_deconstructed(targeting[i].force) then return end
+						end
+							-- we are the only one targeting
+							target.order_deconstruction(target.force)
+					else
+						print('nothing is targeting, this should never happen')
+					end
+				end
+				
+				if target.type == "transport-belt" then
+					-- find entities with this belt as target
+				end
+				
+
+			end
+		end
 	end
 end
 
