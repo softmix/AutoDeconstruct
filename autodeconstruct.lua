@@ -1,13 +1,6 @@
 require "util"
 require "config"
 
-global = {
-    drills = {},
-    known_positions = {},
-    to_be_forgotten = {},
-    loaded = false,
-}
-
 local function find_resource_at(surface, position, range, resource_category)
     local resource_category = resource_category or 'basic-solid'
     local top_left = {x = position.x - range, y = position.y - range}
@@ -51,6 +44,8 @@ local function find_targeting(entity)
     for i = 1, #entities do
         if entities[i].drop_target and util.positiontostr(entities[i].drop_target.position) == util.positiontostr(position) then
             targeting[#targeting + 1] = entities[i]
+        elseif math.abs(entities[i].drop_position.x - position.x) < 1 and math.abs(entities[i].drop_position.y - position.y) < 1 then
+            targeting[#targeting + 1] = entities[i]
         end
     end
 
@@ -58,82 +53,70 @@ local function find_targeting(entity)
     for i = 1, #entities do
         if entities[i].drop_target and util.positiontostr(entities[i].drop_target.position) == util.positiontostr(position) then
             targeting[#targeting + 1] = entities[i]
+        elseif math.abs(entities[i].drop_position.x - position.x) < 1 and math.abs(entities[i].drop_position.y - position.y) < 1 then
+            targeting[#targeting + 1] = entities[i]
         end
     end
 
     return targeting
 end
 
-function autodeconstruct.init_globals()
-    if not global.drills then global.drills = {} end
-    if not global.known_positions then global.known_positions = {} end
-    if not global.to_be_forgotten then global.to_be_forgotten = {} end
+local function find_drills(entity)
+    local range = entity.force.technologies["data-dummy-max-range"].research_unit_energy / 60 / 2
+    local position = entity.position
 
-    global.loaded = true
-    drill_entities = find_all_entities('mining-drill')
-    for _, drill_entity in pairs(drill_entities) do
-        local where = util.positiontostr(drill_entity.position)
-        if global.known_positions[where] then else
-            global.known_positions[where] = true
-            autodeconstruct.add_drill(drill_entity)
+    local top_left = {x = position.x - range, y = position.y - range}
+    local bottom_right = {x = position.x + range, y = position.y + range}
+
+    local surface = game.surfaces['nauvis']
+    local entities = {}
+    local targeting = {}
+
+    local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
+    for i = 1, #entities do
+        -- hack because resource_searching_radius is hidden at runtime, see data-final-fixes.lua
+        drill_range = entities[i].force.technologies["data-dummy-" .. entities[i].name].research_unit_energy / 60
+        if math.abs(entities[i].position.x - position.x) < drill_range and math.abs(entities[i].position.y - position.y) < drill_range then
+            autodeconstruct.check_drill(entities[i])
         end
     end
-    known_positions = {}
 end
 
-function autodeconstruct.on_built_entity(event)
-    if event.created_entity.type ~= 'mining-drill' then return end
-    autodeconstruct.add_drill(event.created_entity)
+function autodeconstruct.init_globals()
+    global = {}
+    drill_entities = find_all_entities('mining-drill')
+    for _, drill_entity in pairs(drill_entities) do
+        autodeconstruct.check_drill(drill_entity)
+    end
 end
 
-function autodeconstruct.add_drill(new_entity)
+function autodeconstruct.on_resource_depleted(event)
+    if event.entity.prototype.resource_category ~= 'basic-solid' or event.entity.prototype.infinite_resource ~= false then return end
+    drill = find_drills(event.entity)
+end
+
+function autodeconstruct.check_drill(drill)
     -- hack because resource_searching_radius is hidden at runtime, see data-final-fixes.lua
-    local range = new_entity.force.technologies["data-dummy-" .. new_entity.name].research_unit_energy / 60
+    local range = drill.force.technologies["data-dummy-" .. drill.name].research_unit_energy / 60
 
     if range == nil then return end 
     if range < .5 then return end
-
-    drill = {
-        entity = new_entity,
-        resources = find_resource_at(new_entity.surface, new_entity.position, range)
-    }
-    table.insert(global.drills, drill)
-end
-
-function autodeconstruct.update_drills(event)
-    local drill_to_update = 1 + event.tick % #global.drills
-
-    drill = global.drills[drill_to_update]
-    if drill.entity and drill.entity.valid then
-        autodeconstruct.update_drill(drill, update_cycle)
-    else
-        global.to_be_forgotten[drill_to_update] = true
-    end
-
-    if drill_to_update == 1 then
-        for i = #global.drills, 1, -1 do
-            if global.to_be_forgotten[i] == true then
-                table.remove(global.drills, i)
-            end
-        end
-        global.to_be_forgotten = {}
-    end
-end
-
-function autodeconstruct.update_drill(drill, update_cycle)
-    for i = #drill.resources, 1, -1 do
-        if drill.resources[i].valid then return end -- if any of the resource nodes are valid we don't need to continue checking
+    
+    resources = find_resource_at(drill.surface, drill.position, range)
+    for i = 1, #resources do
+        if resources[i].amount > 0 then return end
     end
     autodeconstruct.order_deconstruction(drill)
 end
 
 function autodeconstruct.order_deconstruction(drill)
-    if drill.entity.to_be_deconstructed(drill.entity.force) then return end
+    if drill.to_be_deconstructed(drill.force) then return end
     
     local deconstruct = false
-
+--[[ #TODO
+config.lua: autodeconstruct.wait_for_robots = false
     if autodeconstruct.wait_for_robots then
-        logistic_network = drill.entity.surface.find_logistic_network_by_position(drill.entity.position, drill.entity.force.name)
+        logistic_network = drill.surface.find_logistic_network_by_position(drill.position, drill.force.name)
         if logistic_network ~= nil then
             if logistic_network.available_construction_robots > 0 then
                 deconstruct = true
@@ -142,11 +125,15 @@ function autodeconstruct.order_deconstruction(drill)
     else
         deconstruct = true
     end
+--]]
+    deconstruct = true
+--[[ END TODO
 
-    if deconstruct == true and drill.entity.minable then
-        drill.entity.order_deconstruction(drill.entity.force)
+--]]
+    if deconstruct == true and drill.minable then
+        drill.order_deconstruction(drill.force)
         if autodeconstruct.remove_target then
-            target = drill.entity.drop_target
+            target = drill.drop_target
             if target ~= nil and target.minable then
                 if target.type == "logistic-container" or target.type == "container" then
                     targeting = find_targeting(target)
@@ -158,18 +145,12 @@ function autodeconstruct.order_deconstruction(drill)
                         target.order_deconstruction(target.force)
                     end
                 end
-
+--[[ #TODO
                 if target.type == "transport-belt" then
                     -- find entities with this belt as target
                 end
+--]]
             end
         end
-    end
-end
-
-function autodeconstruct.on_tick(event)
-    if not global.loaded then global.init_globals() end -- because script.on_load doesn't have access to game
-    if #global.drills > 0 then
-        autodeconstruct.update_drills(event)
     end
 end
