@@ -6,6 +6,7 @@ autodeconstruct = {
 	ranges = {},
 	known_positions = {},
 	to_be_forgotten = {},
+	loaded = false,
 }
 
 require "config"
@@ -67,6 +68,7 @@ local function find_targeting(entity)
 end
 
 function autodeconstruct.init_globals()
+	autodeconstruct.loaded = true
 	drill_entities = find_all_entities('mining-drill')
 	for _, drill_entity in pairs(drill_entities) do
 		if autodeconstruct.ranges[drill_entity.name] then
@@ -172,6 +174,7 @@ function autodeconstruct.order_deconstruction(drill)
 end
 
 function autodeconstruct.on_tick(event)
+	if not autodeconstruct.loaded then autodeconstruct.init_globals() end -- because script.on_load doesn't have access to game 
 	if #autodeconstruct.drills > 0 then
 		autodeconstruct.update_drills(event)
 	end
