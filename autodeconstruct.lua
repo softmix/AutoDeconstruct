@@ -153,7 +153,7 @@ function autodeconstruct.order_deconstruction(drill)
 		deconstruct = false
 	end
     if deconstruct == true and drill.minable and drill.prototype.selectable_in_game and drill.has_flag("not-deconstructable") == false then
-        if drill.order_deconstruction(drill.force) then
+        if drill.order_deconstruction(drill.force, drill.last_user) then
             if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)  .. " " .. drill.name .. " success"}) end
         else
             msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " failed to order deconstruction on " .. drill.name })
@@ -171,7 +171,7 @@ function autodeconstruct.order_deconstruction(drill)
                         if target.to_be_deconstructed(target.force) then
                             target.cancel_deconstruction(target.force)
                         end
-                        if target.order_deconstruction(target.force) then
+                        if target.order_deconstruction(target.force, target.last_user) then
                             if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(target.position) .. " " .. target.name .. " success"}) end
                         else
                             msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. " failed to order deconstruction on " .. target.name})
