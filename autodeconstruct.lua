@@ -2,7 +2,6 @@ require "util"
 autodeconstruct = {}
 
 local function find_resources(surface, position, range, resource_category)
-	
     local resource_category = resource_category or 'basic-solid'
     local top_left = {x = position.x - range, y = position.y - range}
     local bottom_right = {x = position.x + range, y = position.y + range}
@@ -137,6 +136,26 @@ function autodeconstruct.on_built_entity(event)
     end
 end
 
+function autodeconstruct.build_pipes(drill)
+    local x = drill.position.x
+    local y = drill.position.y
+    local dir = drill.direction
+    -- create pipes for each fluid connector (ignore the side with the ore output)
+    game.surfaces[1].create_entity{name="entity-ghost", position = {x = x, y = y}, force=drill.last_user, inner_name="pipe"}
+    if dir ~= 0 then
+        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x, y = y-1}, force=drill.last_user, inner_name="pipe"}
+    end
+    if dir ~= 2 then
+        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x + 1, y = y}, force=drill.last_user, inner_name="pipe"}
+    end
+    if dir ~= 4 then
+        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x, y = y + 1}, force=drill.last_user, inner_name="pipe"}
+    end
+    if dir ~= 6 then
+        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x - 1, y = y}, force=drill.last_user, inner_name="pipe"}
+    end
+end
+
 function autodeconstruct.order_deconstruction(drill)
     if drill.to_be_deconstructed(drill.force) then
         if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " already marked"}) end
@@ -144,17 +163,25 @@ function autodeconstruct.order_deconstruction(drill)
     end
 
     local deconstruct = true
+    local has_fluid = false
+    if drill.fluidbox and #drill.fluidbox > 0 then
+        has_fluid = true
+        if settings.global['autodeconstruct-remove-fluid-drills'].value ~= true then
+            deconstruct = false
+        end
+    end
 
-	if drill.fluidbox and #drill.fluidbox > 0 then
-		deconstruct = false
-	end
-
-	if next(drill.circuit_connected_entities.red) ~= nil or next(drill.circuit_connected_entities.green) ~= nil then
-		deconstruct = false
-	end
+    if next(drill.circuit_connected_entities.red) ~= nil or next(drill.circuit_connected_entities.green) ~= nil then
+        deconstruct = false
+    end
     if deconstruct == true and drill.minable and drill.prototype.selectable_in_game and drill.has_flag("not-deconstructable") == false then
         if drill.order_deconstruction(drill.force, drill.last_user) then
             if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)  .. " " .. drill.name .. " success"}) end
+            if has_fluid then 
+                if settings.global['autodeconstruct-build-pipes'].value then
+                    autodeconstruct.build_pipes(drill)
+                end
+            end
         else
             msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " failed to order deconstruction on " .. drill.name })
         end
