@@ -141,18 +141,18 @@ function autodeconstruct.build_pipes(drill)
     local y = drill.position.y
     local dir = drill.direction
     -- create pipes for each fluid connector (ignore the side with the ore output)
-    game.surfaces[1].create_entity{name="entity-ghost", position = {x = x, y = y}, force=drill.last_user, inner_name="pipe"}
+    game.surfaces[1].create_entity{name="entity-ghost", position = {x = x, y = y}, force=game.players[1].force, inner_name="pipe"}
     if dir ~= 0 then
-        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x, y = y-1}, force=drill.last_user, inner_name="pipe"}
+        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x, y = y-1}, force=game.players[1].force, inner_name="pipe"}
     end
     if dir ~= 2 then
-        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x + 1, y = y}, force=drill.last_user, inner_name="pipe"}
+        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x + 1, y = y}, force=game.players[1].force, inner_name="pipe"}
     end
     if dir ~= 4 then
-        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x, y = y + 1}, force=drill.last_user, inner_name="pipe"}
+        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x, y = y + 1}, force=game.players[1].force, inner_name="pipe"}
     end
     if dir ~= 6 then
-        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x - 1, y = y}, force=drill.last_user, inner_name="pipe"}
+        game.surfaces[1].create_entity{name="entity-ghost", position = {x = x - 1, y = y}, force=game.players[1].force, inner_name="pipe"}
     end
 end
 
