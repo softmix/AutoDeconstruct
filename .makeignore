@@ -1,0 +1,4 @@
+.*ignore
+.git
+Makefile
+README*
