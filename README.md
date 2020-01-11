@@ -10,3 +10,10 @@ https://mods.factorio.com/mod/AutoDeconstruct
  
      /c remote.call("ad","init")
      /c remote.call("ad","debug")
+
+## Releasing
+- Update `changelog.txt` with relevant information
+- Bump version in `info.json`
+- Run `make`
+- Manually playtest by putting the resulting zip in the Factorio `mods/` folder.
+- Upload to mod portal.
