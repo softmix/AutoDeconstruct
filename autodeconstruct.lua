@@ -8,7 +8,7 @@ local function find_resources(surface, position, range, resource_category)
     local bottom_right = {x = position.x + range, y = position.y + range}
 
     local resources = surface.find_entities_filtered{area={top_left, bottom_right}, type='resource'}
-    categorized = {}
+    local categorized = {}
     for _, resource in pairs(resources) do
         if resource.prototype.resource_category == resource_category then
             table.insert(categorized, resource)
