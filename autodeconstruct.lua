@@ -96,10 +96,10 @@ local function find_drills(entity)
   end
 end
 
-local function debug_message_with_position(drill, msg)
+local function debug_message_with_position(entity, msg)
   if not global.debug then return end
 
-  msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " " .. drill.name  .. " " .. msg})
+  msg_all({"autodeconstruct-debug", util.positiontostr(entity.position) .. " " .. entity.name  .. " " .. msg})
 end
 
 function autodeconstruct.init_globals()
@@ -198,7 +198,7 @@ function autodeconstruct.order_deconstruction(drill)
   -- end guards
 
   if drill.order_deconstruction(drill.force, drill.last_user) then
-    debug_message_with_position(drill, "success")
+    debug_message_with_position(drill, "marked for deconstruction")
   else
     msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " " .. drill.name .. " failed to order deconstruction" })
   end
@@ -221,7 +221,7 @@ function autodeconstruct.order_deconstruction(drill)
           end
 
           if target.order_deconstruction(target.force, target.last_user) then
-            if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(target.position) .. " " .. target.name .. " success"}) end
+            debug_message_with_position(target, "marked for deconstruction")
           else
             msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. " failed to order deconstruction on " .. target.name})
           end
