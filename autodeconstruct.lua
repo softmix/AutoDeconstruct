@@ -96,6 +96,12 @@ local function find_drills(entity)
   end
 end
 
+local function debug_message_with_position(drill, msg)
+  if not global.debug then return end
+
+  msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " " .. drill.name  .. " " .. msg})
+end
+
 function autodeconstruct.init_globals()
   global.max_radius = 0.99
   local drill_entities = find_all_entities('mining-drill')
@@ -154,37 +160,37 @@ end
 
 function autodeconstruct.order_deconstruction(drill)
   if drill.to_be_deconstructed(drill.force) then
-    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " already marked, skipping"}) end
+    debug_message_with_position(drill, "already marked, skipping")
 
     return
   end
 
   if drill.fluidbox and #drill.fluidbox > 0 then
-    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " has a non-empty fluidbox, skipping"}) end
+    debug_message_with_position(drill, "has a non-empty fluidbox, skipping")
 
     return
   end
 
   if next(drill.circuit_connected_entities.red) ~= nil or next(drill.circuit_connected_entities.green) ~= nil then
-    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " is hooked up to the circuit network, skipping"}) end
+    debug_message_with_position(drill, "is hooked up to the circuit network, skipping")
 
     return
   end
 
   if not drill.minable then
-    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " is not minable, skipping"}) end
+    debug_message_with_position(drill, "is not minable, skipping")
 
     return
   end
 
   if not drill.prototype.selectable_in_game then
-    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " is not selectable in game, skipping"}) end
+    debug_message_with_position(drill, "is not selectable in game, skipping")
 
     return
   end
 
   if drill.has_flag("not-deconstructable") then
-    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " is flagged as not-deconstructable, skipping"}) end
+    debug_message_with_position(drill, "is flagged as not-deconstructable, skipping")
 
     return
   end
@@ -192,9 +198,9 @@ function autodeconstruct.order_deconstruction(drill)
   -- end guards
 
   if drill.order_deconstruction(drill.force, drill.last_user) then
-    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)  .. " " .. drill.name .. " success"}) end
+    debug_message_with_position(drill, "success")
   else
-    msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " failed to order deconstruction on " .. drill.name })
+    msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " " .. drill.name .. " failed to order deconstruction" })
   end
 
   if settings.global['autodeconstruct-remove-target'].value then
