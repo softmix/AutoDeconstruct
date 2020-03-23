@@ -158,17 +158,15 @@ function autodeconstruct.order_deconstruction(drill)
     return
   end
 
-  local deconstruct = true
-
   if drill.fluidbox and #drill.fluidbox > 0 then
-    deconstruct = false
+    return
   end
 
   if next(drill.circuit_connected_entities.red) ~= nil or next(drill.circuit_connected_entities.green) ~= nil then
-    deconstruct = false
+    return
   end
 
-  if deconstruct == true and drill.minable and drill.prototype.selectable_in_game and drill.has_flag("not-deconstructable") == false then
+  if drill.minable and drill.prototype.selectable_in_game and drill.has_flag("not-deconstructable") == false then
     if drill.order_deconstruction(drill.force, drill.last_user) then
       if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)  .. " " .. drill.name .. " success"}) end
     else
