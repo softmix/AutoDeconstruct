@@ -57,7 +57,7 @@ local function find_targeting(entity)
     end
   end
 
-  entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='inserter'}
+  local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='inserter'}
   for i = 1, #entities do
     if find_target(entities[i]) == entity then
       targeting[#targeting + 1] = entities[i]
@@ -79,6 +79,7 @@ local function find_drills(entity)
 
   local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
   if global.debug then msg_all({"autodeconstruct-debug", "found " .. #entities  .. " drills"}) end
+
   for i = 1, #entities do
     if math.abs(entities[i].position.x - position.x) < entities[i].prototype.mining_drill_radius and math.abs(entities[i].position.y - position.y) < entities[i].prototype.mining_drill_radius then
       autodeconstruct.check_drill(entities[i])
@@ -99,7 +100,8 @@ function autodeconstruct.on_resource_depleted(event)
     if global.debug then msg_all({"autodeconstruct-debug", "on_resource_depleted", game.tick .. " amount " .. event.entity.amount .. " resource_category " .. event.entity.prototype.resource_category .. " infinite_resource " .. (event.entity.prototype.infinite_resource == true and "true" or "false" )}) end
     return
   end
-  drill = find_drills(event.entity)
+
+  find_drills(event.entity)
 end
 
 function autodeconstruct.check_drill(drill)
@@ -114,7 +116,7 @@ function autodeconstruct.check_drill(drill)
 
   if mining_drill_radius == nil then return end
 
-  resources = find_resources(drill.surface, drill.position, mining_drill_radius, 'basic-solid')
+  local resources = find_resources(drill.surface, drill.position, mining_drill_radius, 'basic-solid')
   for i = 1, #resources do
     if resources[i].amount > 0 then return end
   end
@@ -158,10 +160,10 @@ function autodeconstruct.order_deconstruction(drill)
       msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " failed to order deconstruction on " .. drill.name })
     end
     if settings.global['autodeconstruct-remove-target'].value then
-      target = find_target(drill)
+      local target = find_target(drill)
       if target ~= nil and target.minable and target.prototype.selectable_in_game then
         if target.type == "logistic-container" or target.type == "container" then
-          targeting = find_targeting(target)
+          local targeting = find_targeting(target)
           if targeting ~= nil then
             for i = 1, #targeting do
               if not targeting[i].to_be_deconstructed(targeting[i].force) then return end
