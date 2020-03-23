@@ -154,15 +154,20 @@ end
 
 function autodeconstruct.order_deconstruction(drill)
   if drill.to_be_deconstructed(drill.force) then
-    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " already marked"}) end
+    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " already marked, skipping"}) end
+
     return
   end
 
   if drill.fluidbox and #drill.fluidbox > 0 then
+    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " has a non-empty fluidbox, skipping"}) end
+
     return
   end
 
   if next(drill.circuit_connected_entities.red) ~= nil or next(drill.circuit_connected_entities.green) ~= nil then
+    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " is hooked up to the circuit network, skipping"}) end
+
     return
   end
 
