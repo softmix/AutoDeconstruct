@@ -7,7 +7,7 @@ Optionally removes the chest that the drill is outputting to (enabled by default
 https://mods.factorio.com/mod/AutoDeconstruct
 
  There are remote calls for debug and init.
- 
+
      /c remote.call("ad","init")
      /c remote.call("ad","debug")
 
