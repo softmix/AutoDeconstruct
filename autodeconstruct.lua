@@ -8,24 +8,29 @@ local function find_resources(surface, position, range, resource_category)
 
   local resources = surface.find_entities_filtered{area={top_left, bottom_right}, type='resource'}
   local categorized = {}
+
   for _, resource in pairs(resources) do
     if resource.prototype.resource_category == resource_category then
       table.insert(categorized, resource)
     end
   end
+
   return categorized
 end
 
 local function find_all_entities(entity_type)
   local surface = game.surfaces['nauvis']
   local entities = {}
+
   for chunk in surface.get_chunks() do
     local chunk_area = {lefttop = {x = chunk.x*32, y = chunk.y*32}, rightbottom = {x = chunk.x*32+32, y = chunk.y*32+32}}
     local chunk_entities = surface.find_entities_filtered({area = chunk_area, type = entity_type})
+
     for i = 1, #chunk_entities do
       entities[#entities + 1] = chunk_entities[i]
     end
   end
+
   return entities
 end
 
@@ -34,7 +39,9 @@ local function find_target(entity)
     return entity.drop_target
   else
     local entities = entity.surface.find_entities_filtered{position=entity.drop_position}
+
     if global.debug then msg_all({"autodeconstruct-debug", "found " .. entities[1].name .. " at " .. util.positiontostr(entities[1].position)}) end
+
     return entities[1]
   end
 end
@@ -63,7 +70,9 @@ local function find_targeting(entity)
       targeting[#targeting + 1] = entities[i]
     end
   end
+
   if global.debug then msg_all({"autodeconstruct-debug", "found " .. #targeting .. " targeting"}) end
+
   return targeting
 end
 
@@ -90,6 +99,7 @@ end
 function autodeconstruct.init_globals()
   global.max_radius = 0.99
   local drill_entities = find_all_entities('mining-drill')
+
   for _, drill_entity in pairs(drill_entities) do
     autodeconstruct.check_drill(drill_entity)
   end
@@ -120,13 +130,17 @@ function autodeconstruct.check_drill(drill)
   for i = 1, #resources do
     if resources[i].amount > 0 then return end
   end
+
   if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " found no resources, deconstructing"}) end
+
   autodeconstruct.order_deconstruction(drill)
 end
 
 function autodeconstruct.on_cancelled_deconstruction(event)
   if event.player_index ~= nil or event.entity.type ~= 'mining-drill' then return end
+
   if global.debug then msg_all({"autodeconstruct-debug", "on_cancelled_deconstruction", util.positiontostr(event.entity.position) .. " deconstruction timed out, checking again"}) end
+
   autodeconstruct.check_drill(event.entity)
 end
 
@@ -153,25 +167,31 @@ function autodeconstruct.order_deconstruction(drill)
   if next(drill.circuit_connected_entities.red) ~= nil or next(drill.circuit_connected_entities.green) ~= nil then
     deconstruct = false
   end
+
   if deconstruct == true and drill.minable and drill.prototype.selectable_in_game and drill.has_flag("not-deconstructable") == false then
     if drill.order_deconstruction(drill.force, drill.last_user) then
       if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)  .. " " .. drill.name .. " success"}) end
     else
       msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " failed to order deconstruction on " .. drill.name })
     end
+
     if settings.global['autodeconstruct-remove-target'].value then
       local target = find_target(drill)
+
       if target ~= nil and target.minable and target.prototype.selectable_in_game then
         if target.type == "logistic-container" or target.type == "container" then
           local targeting = find_targeting(target)
+
           if targeting ~= nil then
             for i = 1, #targeting do
               if not targeting[i].to_be_deconstructed(targeting[i].force) then return end
             end
+
             -- we are the only one targeting
             if target.to_be_deconstructed(target.force) then
               target.cancel_deconstruction(target.force)
             end
+
             if target.order_deconstruction(target.force, target.last_user) then
               if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(target.position) .. " " .. target.name .. " success"}) end
             else
