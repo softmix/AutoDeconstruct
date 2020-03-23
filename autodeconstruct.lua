@@ -171,35 +171,53 @@ function autodeconstruct.order_deconstruction(drill)
     return
   end
 
-  if drill.minable and drill.prototype.selectable_in_game and drill.has_flag("not-deconstructable") == false then
-    if drill.order_deconstruction(drill.force, drill.last_user) then
-      if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)  .. " " .. drill.name .. " success"}) end
-    else
-      msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " failed to order deconstruction on " .. drill.name })
-    end
+  if not drill.minable then
+    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " is not minable, skipping"}) end
 
-    if settings.global['autodeconstruct-remove-target'].value then
-      local target = find_target(drill)
+    return
+  end
 
-      if target ~= nil and target.minable and target.prototype.selectable_in_game then
-        if target.type == "logistic-container" or target.type == "container" then
-          local targeting = find_targeting(target)
+  if not drill.prototype.selectable_in_game then
+    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " is not selectable in game, skipping"}) end
 
-          if targeting ~= nil then
-            for i = 1, #targeting do
-              if not targeting[i].to_be_deconstructed(targeting[i].force) then return end
-            end
+    return
+  end
 
-            -- we are the only one targeting
-            if target.to_be_deconstructed(target.force) then
-              target.cancel_deconstruction(target.force)
-            end
+  if drill.has_flag("not-deconstructable") then
+    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " is flagged as not-deconstructable, skipping"}) end
 
-            if target.order_deconstruction(target.force, target.last_user) then
-              if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(target.position) .. " " .. target.name .. " success"}) end
-            else
-              msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. " failed to order deconstruction on " .. target.name})
-            end
+    return
+  end
+
+  -- end guards
+
+  if drill.order_deconstruction(drill.force, drill.last_user) then
+    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position)  .. " " .. drill.name .. " success"}) end
+  else
+    msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " failed to order deconstruction on " .. drill.name })
+  end
+
+  if settings.global['autodeconstruct-remove-target'].value then
+    local target = find_target(drill)
+
+    if target ~= nil and target.minable and target.prototype.selectable_in_game then
+      if target.type == "logistic-container" or target.type == "container" then
+        local targeting = find_targeting(target)
+
+        if targeting ~= nil then
+          for i = 1, #targeting do
+            if not targeting[i].to_be_deconstructed(targeting[i].force) then return end
+          end
+
+          -- we are the only one targeting
+          if target.to_be_deconstructed(target.force) then
+            target.cancel_deconstruction(target.force)
+          end
+
+          if target.order_deconstruction(target.force, target.last_user) then
+            if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(target.position) .. " " .. target.name .. " success"}) end
+          else
+            msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. " failed to order deconstruction on " .. target.name})
           end
         end
       end
