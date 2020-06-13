@@ -17,3 +17,4 @@ https://mods.factorio.com/mod/AutoDeconstruct
 - Run `make`
 - Manually playtest by putting the resulting zip in the Factorio `mods/` folder.
 - Upload to mod portal.
+- Make a release on github.
