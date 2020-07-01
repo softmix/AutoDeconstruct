@@ -11,6 +11,10 @@ https://mods.factorio.com/mod/AutoDeconstruct
      /c remote.call("ad","init")
      /c remote.call("ad","debug")
 
+## Translation
+
+You are welcome to help with localization, please use [this Crowdin project](https://crowdin.com/project/factorio-mods-localization). You can find more details [here](https://github.com/dima74/factorio-mods-localization#how-to-translate-using-crowdin).
+
 ## Releasing
 - Update `changelog.txt` with relevant information
 - Bump version in `info.json`
