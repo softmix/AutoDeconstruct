@@ -158,6 +158,33 @@ function autodeconstruct.on_built_entity(event)
   end
 end
 
+function autodeconstruct.deconstruct_target(drill)
+  local target = find_target(drill)
+
+  if target ~= nil and target.minable and target.prototype.selectable_in_game then
+    if target.type == "logistic-container" or target.type == "container" then
+      local targeting = find_targeting(target)
+
+      if targeting ~= nil then
+        for i = 1, #targeting do
+          if not targeting[i].to_be_deconstructed(targeting[i].force) and targeting[i] ~= drill then break end
+        end
+
+        -- we are the only one targeting
+        if target.to_be_deconstructed(target.force) then
+          target.cancel_deconstruction(target.force)
+        end
+
+        if target.order_deconstruction(target.force, target.last_user) then
+          debug_message_with_position(target, "marked for deconstruction")
+        else
+          msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. " failed to order deconstruction on " .. target.name})
+        end
+      end
+    end
+  end
+end
+
 function autodeconstruct.order_deconstruction(drill)
   if drill.to_be_deconstructed(drill.force) then
     debug_message_with_position(drill, "already marked, skipping")
@@ -197,36 +224,14 @@ function autodeconstruct.order_deconstruction(drill)
 
   -- end guards
 
+  if settings.global['autodeconstruct-remove-target'].value then
+    autodeconstruct.deconstruct_target(drill)
+  end
+
   if drill.order_deconstruction(drill.force, drill.last_user) then
     debug_message_with_position(drill, "marked for deconstruction")
   else
     msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " " .. drill.name .. " failed to order deconstruction" })
   end
 
-  if settings.global['autodeconstruct-remove-target'].value then
-    local target = find_target(drill)
-
-    if target ~= nil and target.minable and target.prototype.selectable_in_game then
-      if target.type == "logistic-container" or target.type == "container" then
-        local targeting = find_targeting(target)
-
-        if targeting ~= nil then
-          for i = 1, #targeting do
-            if not targeting[i].to_be_deconstructed(targeting[i].force) then return end
-          end
-
-          -- we are the only one targeting
-          if target.to_be_deconstructed(target.force) then
-            target.cancel_deconstruction(target.force)
-          end
-
-          if target.order_deconstruction(target.force, target.last_user) then
-            debug_message_with_position(target, "marked for deconstruction")
-          else
-            msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. " failed to order deconstruction on " .. target.name})
-          end
-        end
-      end
-    end
-  end
 end
