@@ -185,17 +185,46 @@ function autodeconstruct.deconstruct_target(drill)
   end
 end
 
+function autodeconstruct.build_pipes(drill)
+  local x = drill.position.x
+  local y = drill.position.y
+  local dir = drill.direction
+  local drillForce = drill.last_user.force
+  local drillSurface = drill.surface
+  -- future improvement: a mod setting for the pipeType to allow modded pipes
+  local pipeType = "pipe"
+
+  -- create pipes for each fluid connector (ignore the side with the ore output)
+  -- future improvement: it would be nice if it could detect which directions were connected and only connect those
+  drillSurface.create_entity{name="entity-ghost", position = {x = x, y = y}, force=drillForce, inner_name=pipeType}
+  if dir ~= 0 then
+    drillSurface.create_entity{name="entity-ghost", position = {x = x, y = y-1}, force=drillForce, inner_name=pipeType}
+  end
+  if dir ~= 2 then
+    drillSurface.create_entity{name="entity-ghost", position = {x = x + 1, y = y}, force=drillForce, inner_name=pipeType}
+  end
+  if dir ~= 4 then
+    drillSurface.create_entity{name="entity-ghost", position = {x = x, y = y + 1}, force=drillForce, inner_name=pipeType}
+  end
+  if dir ~= 6 then
+    drillSurface.create_entity{name="entity-ghost", position = {x = x - 1, y = y}, force=drillForce, inner_name=pipeType}
+  end
+end
+
 function autodeconstruct.order_deconstruction(drill)
   if drill.to_be_deconstructed(drill.force) then
     debug_message_with_position(drill, "already marked, skipping")
 
     return
   end
-
+  local has_fluid = false
   if drill.fluidbox and #drill.fluidbox > 0 then
-    debug_message_with_position(drill, "has a non-empty fluidbox, skipping")
+    has_fluid = true
+    if settings.global['autodeconstruct-remove-fluid-drills'].value ~= true then
+      debug_message_with_position(drill, "has a non-empty fluidbox and fluid deconstruction is not enabled, skipping")
 
-    return
+      return
+    end
   end
 
   if next(drill.circuit_connected_entities.red) ~= nil or next(drill.circuit_connected_entities.green) ~= nil then
@@ -230,6 +259,10 @@ function autodeconstruct.order_deconstruction(drill)
 
   if drill.order_deconstruction(drill.force, drill.last_user) then
     debug_message_with_position(drill, "marked for deconstruction")
+    if has_fluid and settings.global['autodeconstruct-build-pipes'].value then
+      debug_message_with_position(drill, "adding pipe blueprints")
+      autodeconstruct.build_pipes(drill)
+    end
   else
     msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " " .. drill.name .. " failed to order deconstruction" })
   end
