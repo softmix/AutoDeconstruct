@@ -1,5 +1,10 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.1.22
+Date: 2021-06-04
+  New:
+    - Handle drills that are using fluids, by replacing them with pipes (Nicolas Lang)
+Version: 0.2.0
+---------------------------------------------------------------------------------------------------
 Date: 2021-05-09
   Bugfixes:
     - Avoid errors if drills are instantly removed upon deconstruction (DeHackEd)
