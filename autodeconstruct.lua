@@ -193,6 +193,12 @@ function autodeconstruct.build_pipes(drill)
   local drillSurface = drill.surface
   -- future improvement: a mod setting for the pipeType to allow modded pipes
   local pipeType = "pipe"
+  if game.active_mods["space-exploration"] then
+    local is_space = remote.call("space-exploration", "get_zone_is_space", {zone_index = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = drillSurface.index}).index})
+    if is_space then
+      pipeType = "se-space-pipe"
+    end
+  end
 
   -- create pipes for each fluid connector (ignore the side with the ore output)
   -- future improvement: it would be nice if it could detect which directions were connected and only connect those
