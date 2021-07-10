@@ -189,25 +189,32 @@ function autodeconstruct.build_pipes(drill)
   local x = drill.position.x
   local y = drill.position.y
   local dir = drill.direction
-  local drillForce = drill.last_user.force
+  local drillForce = drill.force
+  local drillUser = drill.last_user
   local drillSurface = drill.surface
   -- future improvement: a mod setting for the pipeType to allow modded pipes
   local pipeType = "pipe"
-
+  if game.active_mods["space-exploration"] then
+    local is_space = remote.call("space-exploration", "get_zone_is_space", {zone_index = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = drillSurface.index}).index})
+    if is_space then
+      pipeType = "se-space-pipe"
+    end
+  end
   -- create pipes for each fluid connector (ignore the side with the ore output)
+  -- future improvement: check if the drill is larger that 3x3 and build a set of ug-pipes instead
   -- future improvement: it would be nice if it could detect which directions were connected and only connect those
-  drillSurface.create_entity{name="entity-ghost", position = {x = x, y = y}, force=drillForce, inner_name=pipeType}
-  if dir ~= 0 then
-    drillSurface.create_entity{name="entity-ghost", position = {x = x, y = y-1}, force=drillForce, inner_name=pipeType}
+  drillSurface.create_entity{name="entity-ghost", player = drillUser, position = {x = x, y = y}, force=drillForce, inner_name=pipeType}
+  if dir ~= defines.direction.north then
+    drillSurface.create_entity{name="entity-ghost", player = drillUser, position = {x = x, y = y-1}, force=drillForce, inner_name=pipeType}
   end
-  if dir ~= 2 then
-    drillSurface.create_entity{name="entity-ghost", position = {x = x + 1, y = y}, force=drillForce, inner_name=pipeType}
+  if dir ~= defines.direction.east then
+    drillSurface.create_entity{name="entity-ghost", player = drillUser, position = {x = x + 1, y = y}, force=drillForce, inner_name=pipeType}
   end
-  if dir ~= 4 then
-    drillSurface.create_entity{name="entity-ghost", position = {x = x, y = y + 1}, force=drillForce, inner_name=pipeType}
+  if dir ~= defines.direction.south then
+    drillSurface.create_entity{name="entity-ghost", player = drillUser, position = {x = x, y = y + 1}, force=drillForce, inner_name=pipeType}
   end
-  if dir ~= 6 then
-    drillSurface.create_entity{name="entity-ghost", position = {x = x - 1, y = y}, force=drillForce, inner_name=pipeType}
+  if dir ~= defines.direction.west then
+    drillSurface.create_entity{name="entity-ghost", player = drillUser, position = {x = x - 1, y = y}, force=drillForce, inner_name=pipeType}
   end
 end
 
