@@ -19,18 +19,19 @@ local function find_resources(surface, position, range, resource_category)
 end
 
 local function find_all_entities(entity_type)
-  local surface = game.surfaces['nauvis']
   local entities = {}
-
-  for chunk in surface.get_chunks() do
-    local chunk_area = {lefttop = {x = chunk.x*32, y = chunk.y*32}, rightbottom = {x = chunk.x*32+32, y = chunk.y*32+32}}
-    local chunk_entities = surface.find_entities_filtered({area = chunk_area, type = entity_type})
-
-    for i = 1, #chunk_entities do
-      entities[#entities + 1] = chunk_entities[i]
+  for _, surface in pairs(game.surfaces) do
+    if not surface or not surface.valid then
+      break
+    end
+    for chunk in surface.get_chunks() do
+      local chunk_area = {lefttop = {x = chunk.x*32, y = chunk.y*32}, rightbottom = {x = chunk.x*32+32, y = chunk.y*32+32}}
+      local chunk_entities = surface.find_entities_filtered({area = chunk_area, type = entity_type})
+      for i = 1, #chunk_entities do
+        entities[#entities + 1] = chunk_entities[i]
+      end
     end
   end
-
   return entities
 end
 
