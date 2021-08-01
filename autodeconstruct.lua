@@ -186,36 +186,68 @@ function autodeconstruct.deconstruct_target(drill)
   end
 end
 
+local function range(from,to,step)
+  step = (from <= to) and step or -step
+  local t = {}
+  for i = from, to - step, step do 
+      t[#t + 1] = i
+  end
+  t = (#t>0) and t or {from}
+  --log("from:"..tostring(from)..",to:"..tostring(to)..", result:"..serpent.block(t, {comment = false, numformat = '%1.8g', compact = true } ))
+  return t
+end
+
+local function rotate(v,dir)
+  if dir == defines.direction.east then
+    return {x = -v.y, y = v.x}
+  elseif dir == defines.direction.south then
+    return {x = -v.x, y = -v.y}
+  elseif dir == defines.direction.west then
+    return {x = v.y, y = -v.x}
+  end
+  return v
+end
+
+function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
+  --log("pipeTarget"..serpent.block(pipeTarget, {comment = false, numformat = '%1.8g', compact = true } ).."; drillData.position" .. serpent.block(drillData.position, {comment = false, numformat = '%1.8g', compact = true } ))
+  pipeTarget = rotate(pipeTarget,drillData.direction)
+  for _,x in pairs(range(drillData.position.x, drillData.position.x + pipeTarget.x, 1)) do
+    for _, y in pairs(range(drillData.position.y, drillData.position.y + pipeTarget.y, 1)) do
+      drillData.surface.create_entity{name="entity-ghost", player = drillData.owner, position = {x = x, y = y}, force=drillData.force, inner_name=pipeType}
+    end
+  end
+end
+
 function autodeconstruct.build_pipes(drill)
-  local x = drill.position.x
-  local y = drill.position.y
-  local dir = drill.direction
-  local drillForce = drill.force
-  local drillUser = drill.last_user
-  local drillSurface = drill.surface
   -- future improvement: a mod setting for the pipeType to allow modded pipes
+  -- future improvement: it would be nice if it could detect which directions were connected and only connect those
+  local drillData = {
+    position  = {
+      x = drill.position.x,
+      y = drill.position.y
+    },
+    direction = drill.direction,
+    force     = drill.force,
+    owner     = drill.last_user,
+    surface   = drill.surface
+  }
+  --Space Exploration Compatibility check for space-surfaces
   local pipeType = "pipe"
   if game.active_mods["space-exploration"] then
-    local is_space = remote.call("space-exploration", "get_zone_is_space", {zone_index = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = drillSurface.index}).index})
+    local se_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = drillData.surface.index})
+    local is_space = remote.call("space-exploration", "get_zone_is_space", {zone_index = se_zone.index})
     if is_space then
       pipeType = "se-space-pipe"
     end
   end
-  -- create pipes for each fluid connector (ignore the side with the ore output)
-  -- future improvement: check if the drill is larger that 3x3 and build a set of ug-pipes instead
-  -- future improvement: it would be nice if it could detect which directions were connected and only connect those
-  drillSurface.create_entity{name="entity-ghost", player = drillUser, position = {x = x, y = y}, force=drillForce, inner_name=pipeType}
-  if dir ~= defines.direction.north then
-    drillSurface.create_entity{name="entity-ghost", player = drillUser, position = {x = x, y = y-1}, force=drillForce, inner_name=pipeType}
-  end
-  if dir ~= defines.direction.east then
-    drillSurface.create_entity{name="entity-ghost", player = drillUser, position = {x = x + 1, y = y}, force=drillForce, inner_name=pipeType}
-  end
-  if dir ~= defines.direction.south then
-    drillSurface.create_entity{name="entity-ghost", player = drillUser, position = {x = x, y = y + 1}, force=drillForce, inner_name=pipeType}
-  end
-  if dir ~= defines.direction.west then
-    drillSurface.create_entity{name="entity-ghost", player = drillUser, position = {x = x - 1, y = y}, force=drillForce, inner_name=pipeType}
+  -- fluidbox_prototype.pipe_connections contains a array with various connection points, it seems the one we need is always the 1st
+  local fluidbox_prototype = drill.fluidbox.get_prototype(1)
+  if fluidbox_prototype.pipe_connections and #fluidbox_prototype.pipe_connections > 0 then
+    for k, conn in pairs(fluidbox_prototype.pipe_connections) do
+      if conn.positions and #conn.positions > 0 then
+        autodeconstruct.build_pipe(drillData, pipeType, conn.positions[1])
+      end
+    end
   end
 end
 
