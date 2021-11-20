@@ -1,21 +1,38 @@
 require "util"
 autodeconstruct = {}
 
-local function find_resources(surface, position, range, resource_category)
-  local resource_category = resource_category or 'basic-solid'
-  local top_left = {x = position.x - range, y = position.y - range}
-  local bottom_right = {x = position.x + range, y = position.y + range}
+local function map_to_string(t)
+  local s = "{"
+  for k,_ in pairs(t) do
+    s = s..tostring(k)..","
+  end
+  s = s.."}"
+  return s
+end
+  
 
-  local resources = surface.find_entities_filtered{area={top_left, bottom_right}, type='resource'}
-  local categorized = {}
+local function has_resources(drill)
+  local resource_categories = drill.prototype.resource_categories
+  local position = drill.position
+  local range = drill.prototype.mining_drill_radius
+  if resource_categories then
+    local top_left = {x = position.x - range, y = position.y - range}
+    local bottom_right = {x = position.x + range, y = position.y + range}
 
-  for _, resource in pairs(resources) do
-    if resource.prototype.resource_category == resource_category then
-      table.insert(categorized, resource)
+    local resources = drill.surface.find_entities_filtered{area={top_left, bottom_right}, type='resource'}
+    if global.debug then msg_all("found "..#resources.." resources near "..util.positiontostr(drill.position)..", checking for types "..map_to_string(resource_categories)) end
+
+    for _, resource in pairs(resources) do
+      if resource_categories[resource.prototype.resource_category] and
+          resource.amount > 0 then
+        if global.debug then msg_all("drill still mining "..resource.name.." at "..util.positiontostr(resource.position)) end
+        return true
+      else
+        if global.debug then msg_all("drill can't mine "..resource.name.." at "..util.positiontostr(resource.position)) end
+      end
     end
   end
-
-  return categorized
+  return false
 end
 
 local function find_all_entities(entity_type)
@@ -84,14 +101,14 @@ local function find_drills(entity)
   local bottom_right = {x = position.x + global.max_radius, y = position.y + global.max_radius}
 
   local entities = {}
-  local targeting = {}
-
+  
   local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
   if global.debug then msg_all({"autodeconstruct-debug", "found " .. #entities  .. " drills"}) end
 
-  for i = 1, #entities do
-    if math.abs(entities[i].position.x - position.x) < entities[i].prototype.mining_drill_radius and math.abs(entities[i].position.y - position.y) < entities[i].prototype.mining_drill_radius then
-      autodeconstruct.check_drill(entities[i])
+  for _, e in pairs(entities) do
+    if (math.abs(e.position.x - position.x) < e.prototype.mining_drill_radius and 
+        math.abs(e.position.y - position.y) < e.prototype.mining_drill_radius) then
+      autodeconstruct.check_drill(e)
     end
   end
 end
@@ -112,7 +129,7 @@ function autodeconstruct.init_globals()
 end
 
 function autodeconstruct.on_resource_depleted(event)
-  if event.entity.prototype.resource_category ~= 'basic-solid' or event.entity.prototype.infinite_resource ~= false then
+  if event.entity.prototype.infinite_resource then
     if global.debug then msg_all({"autodeconstruct-debug", "on_resource_depleted", game.tick .. " amount " .. event.entity.amount .. " resource_category " .. event.entity.prototype.resource_category .. " infinite_resource " .. (event.entity.prototype.infinite_resource == true and "true" or "false" )}) end
     return
   end
@@ -126,20 +143,15 @@ function autodeconstruct.check_drill(drill)
   end
 
   local mining_drill_radius = drill.prototype.mining_drill_radius
+  if mining_drill_radius == nil then return end
   if mining_drill_radius > global.max_radius then
     global.max_radius = mining_drill_radius
   end
 
-  if mining_drill_radius == nil then return end
-
-  local resources = find_resources(drill.surface, drill.position, mining_drill_radius, 'basic-solid')
-  for i = 1, #resources do
-    if resources[i].amount > 0 then return end
+  if not has_resources(drill) then
+    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " found no compatible resources, deconstructing"}) end
+    autodeconstruct.order_deconstruction(drill)
   end
-
-  if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " found no resources, deconstructing"}) end
-
-  autodeconstruct.order_deconstruction(drill)
 end
 
 function autodeconstruct.on_cancelled_deconstruction(event)
