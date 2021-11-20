@@ -214,21 +214,9 @@ local function range(from,to,step)
   return t
 end
 
-local function rotate(v,dir)
-  if dir == defines.direction.east then
-    return {x = -v.y, y = v.x}
-  elseif dir == defines.direction.south then
-    return {x = -v.x, y = -v.y}
-  elseif dir == defines.direction.west then
-    return {x = v.y, y = -v.x}
-  end
-  return v
-end
-
 function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
   --log("pipeTarget"..serpent.block(pipeTarget, {comment = false, numformat = '%1.8g', compact = true } ).."; drillData.position" .. serpent.block(drillData.position, {comment = false, numformat = '%1.8g', compact = true } ))
-  pipeTarget = rotate(pipeTarget,drillData.direction)
-  for _,x in pairs(range(drillData.position.x, drillData.position.x + pipeTarget.x, 1)) do
+  for _, x in pairs(range(drillData.position.x, drillData.position.x + pipeTarget.x, 1)) do
     for _, y in pairs(range(drillData.position.y, drillData.position.y + pipeTarget.y, 1)) do
       drillData.surface.create_entity{name="entity-ghost", player = drillData.owner, position = {x = x, y = y}, force=drillData.force, inner_name=pipeType}
     end
@@ -248,6 +236,7 @@ function autodeconstruct.build_pipes(drill)
     owner     = drill.last_user,
     surface   = drill.surface
   }
+  
   --Space Exploration Compatibility check for space-surfaces
   local pipeType = "pipe"
   if game.active_mods["space-exploration"] then
@@ -257,13 +246,23 @@ function autodeconstruct.build_pipes(drill)
       pipeType = "se-space-pipe"
     end
   end
+  
+  -- Connection position index is different from entity.direction
+  local conn_index = 1  -- north
+  if drillData.direction == defines.direction.east  then
+    conn_index = 2
+  elseif drillData.direction == defines.direction.south then
+    conn_index = 3
+  elseif drillData.direction == defines.direction.west then
+    conn_index = 4
+  end
+  
   -- fluidbox_prototype.pipe_connections contains a array with various connection points, it seems the one we need is always the 1st
   local fluidbox_prototype = drill.fluidbox.get_prototype(1)
   if fluidbox_prototype.pipe_connections and #fluidbox_prototype.pipe_connections > 0 then
-    for k, conn in pairs(fluidbox_prototype.pipe_connections) do
-      if conn.positions and #conn.positions > 0 then
-        autodeconstruct.build_pipe(drillData, pipeType, conn.positions[1])
-      end
+    for _, conn in pairs(fluidbox_prototype.pipe_connections) do
+      -- get the relative positions of the pipe connections for this drill's rotation
+      autodeconstruct.build_pipe(drillData, pipeType, conn.positions[conn_index])
     end
   end
 end
