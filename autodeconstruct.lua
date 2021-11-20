@@ -123,9 +123,20 @@ local function debug_message_with_position(entity, msg)
 end
 
 function autodeconstruct.init_globals()
+  -- Find largest-range miner in the game
   global.max_radius = 0.99
+  local drill_prototypes = game.get_filtered_entity_prototypes{{filter="type",type="mining-drill"}}
+  for _,p in drill_prototypes do
+    if p.mining_drill_radius then
+      if p.mining_drill_radius > global.max_radius then
+        global.max_radius = p.mining_drill_radius
+        if global.debug then msg_all({"autodeconstruct-debug", "init_globals", "global.max_radius updated to " .. global.max_radius}) end
+      end
+    end
+  end
+  
+  -- Look for existing depleted miners based on current settings
   local drill_entities = find_all_entities('mining-drill')
-
   for _, drill_entity in pairs(drill_entities) do
     autodeconstruct.check_drill(drill_entity)
   end
@@ -158,19 +169,11 @@ function autodeconstruct.check_drill(drill)
 end
 
 function autodeconstruct.on_cancelled_deconstruction(event)
-  if event.player_index ~= nil or event.entity.type ~= 'mining-drill' then return end
+  if event.player_index ~= nil then return end
 
   if global.debug then msg_all({"autodeconstruct-debug", "on_cancelled_deconstruction", util.positiontostr(event.entity.position) .. " deconstruction timed out, checking again"}) end
-
+  -- If another mod cancelled deconstruction of a miner, check this miner again
   autodeconstruct.check_drill(event.entity)
-end
-
-function autodeconstruct.on_built_entity(event)
-  if event.created_entity.type ~= 'mining-drill' then return end
-  if event.created_entity.prototype.mining_drill_radius > global.max_radius then
-    global.max_radius = event.created_entity.prototype.mining_drill_radius
-    if global.debug then msg_all({"autodeconstruct-debug", "on_built_entity", "global.max_radius updated to " .. global.max_radius}) end
-  end
 end
 
 function autodeconstruct.deconstruct_target(drill)
