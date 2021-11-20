@@ -23,10 +23,13 @@ local function has_resources(drill)
     if global.debug then msg_all("found "..#resources.." resources near "..util.positiontostr(drill.position)..", checking for types "..map_to_string(resource_categories)) end
 
     for _, resource in pairs(resources) do
-      if resource_categories[resource.prototype.resource_category] and
-          resource.amount > 0 then
-        if global.debug then msg_all("drill still mining "..resource.name.." at "..util.positiontostr(resource.position)) end
-        return true
+      if resource_categories[resource.prototype.resource_category] then
+        if resource.amount > 0 then
+          if global.debug then msg_all("drill still mining "..resource.name.." at "..util.positiontostr(resource.position)) end
+          return true
+        else
+          if global.debug then msg_all("drill finished mining "..resource.name.." at "..util.positiontostr(resource.position)) end
+        end
       else
         if global.debug then msg_all("drill can't mine "..resource.name.." at "..util.positiontostr(resource.position)) end
       end
