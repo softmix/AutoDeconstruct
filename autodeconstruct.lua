@@ -247,6 +247,9 @@ function autodeconstruct.build_pipes(drill)
     end
   end
   
+  -- Drills only have one fluidbox, get the first
+  local fluidbox_prototype = drill.fluidbox.get_prototype(1)
+  
   -- Connection position index is different from entity.direction
   local conn_index = 1  -- north
   if drillData.direction == defines.direction.east  then
@@ -257,13 +260,9 @@ function autodeconstruct.build_pipes(drill)
     conn_index = 4
   end
   
-  -- fluidbox_prototype.pipe_connections contains a array with various connection points, it seems the one we need is always the 1st
-  local fluidbox_prototype = drill.fluidbox.get_prototype(1)
-  if fluidbox_prototype.pipe_connections and #fluidbox_prototype.pipe_connections > 0 then
-    for _, conn in pairs(fluidbox_prototype.pipe_connections) do
-      -- get the relative positions of the pipe connections for this drill's rotation
-      autodeconstruct.build_pipe(drillData, pipeType, conn.positions[conn_index])
-    end
+  for _, conn in pairs(fluidbox_prototype.pipe_connections) do
+    -- place pipes to this connection point for the given rotation
+    autodeconstruct.build_pipe(drillData, pipeType, conn.positions[conn_index])
   end
 end
 
@@ -276,7 +275,7 @@ function autodeconstruct.order_deconstruction(drill)
   local has_fluid = false
   if drill.fluidbox and #drill.fluidbox > 0 then
     has_fluid = true
-    if settings.global['autodeconstruct-remove-fluid-drills'].value ~= true then
+    if not settings.global['autodeconstruct-remove-fluid-drills'].value then
       debug_message_with_position(drill, "has a non-empty fluidbox and fluid deconstruction is not enabled, skipping")
 
       return
@@ -316,8 +315,12 @@ function autodeconstruct.order_deconstruction(drill)
   if drill.order_deconstruction(drill.force, drill.last_user) then
     debug_message_with_position(drill, "marked for deconstruction")
     if has_fluid and settings.global['autodeconstruct-build-pipes'].value then
-      debug_message_with_position(drill, "adding pipe blueprints")
-      autodeconstruct.build_pipes(drill)
+      if #drill.fluidbox.get_connections(1) > 1 then
+        debug_message_with_position(drill, "adding pipe blueprints")
+        autodeconstruct.build_pipes(drill)
+      else
+        debug_message_with_position(drill, "skipping pipe blueprints, only one connection")
+      end
     end
   else
     msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " " .. drill.name .. " failed to order deconstruction" })
