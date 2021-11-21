@@ -244,7 +244,6 @@ end
 
 function autodeconstruct.build_pipes(drill)
   -- future improvement: a mod setting for the pipeType to allow modded pipes
-  -- future improvement: it would be nice if it could detect which directions were connected and only connect those
   local drillData = {
     position  = {
       x = drill.position.x,
