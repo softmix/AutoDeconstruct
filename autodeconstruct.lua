@@ -59,10 +59,10 @@ local function find_target(entity)
     return entity.drop_target
   else
     local entities = entity.surface.find_entities_filtered{position=entity.drop_position}
-
-    if global.debug then msg_all({"autodeconstruct-debug", "found " .. entities[1].name .. " at " .. util.positiontostr(entities[1].position)}) end
-
-    return entities[1]
+    if #entities > 0 then
+      if global.debug then msg_all({"autodeconstruct-debug", "found " .. entities[1].name .. " at " .. util.positiontostr(entities[1].position)}) end
+      return entities[1]
+    end
   end
 end
 
@@ -74,17 +74,9 @@ local function find_targeting(entity)
   local bottom_right = {x = position.x + range, y = position.y + range}
 
   local surface = entity.surface
-  local entities = {}
   local targeting = {}
 
-  local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
-  for i = 1, #entities do
-    if find_target(entities[i]) == entity then
-      targeting[#targeting + 1] = entities[i]
-    end
-  end
-
-  local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='inserter'}
+  local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type={'mining-drill', 'inserter'}}
   for i = 1, #entities do
     if find_target(entities[i]) == entity then
       targeting[#targeting + 1] = entities[i]
@@ -103,8 +95,6 @@ local function find_drills(entity)
   local top_left = {x = position.x - global.max_radius, y = position.y - global.max_radius}
   local bottom_right = {x = position.x + global.max_radius, y = position.y + global.max_radius}
 
-  local entities = {}
-  
   local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
   if global.debug then msg_all({"autodeconstruct-debug", "found " .. #entities  .. " drills"}) end
 
@@ -184,19 +174,26 @@ function autodeconstruct.deconstruct_target(drill)
       local targeting = find_targeting(target)
 
       if targeting ~= nil then
+      
+        local chest_is_idle = true
         for i = 1, #targeting do
-          if not targeting[i].to_be_deconstructed(targeting[i].force) and targeting[i] ~= drill then break end
+          if not targeting[i].to_be_deconstructed(targeting[i].force) and targeting[i] ~= drill then
+            chest_is_idle = false
+            break
+          end
         end
+        
+        if chest_is_idle then
+          -- we are the only one targeting
+          if target.to_be_deconstructed(target.force) then
+            target.cancel_deconstruction(target.force)
+          end
 
-        -- we are the only one targeting
-        if target.to_be_deconstructed(target.force) then
-          target.cancel_deconstruction(target.force)
-        end
-
-        if target.order_deconstruction(target.force, target.last_user) then
-          debug_message_with_position(target, "marked for deconstruction")
-        else
-          msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. " failed to order deconstruction on " .. target.name})
+          if target.order_deconstruction(target.force, target.last_user) then
+            debug_message_with_position(target, "marked for deconstruction")
+          else
+            msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. " failed to order deconstruction on " .. target.name})
+          end
         end
       end
     end
