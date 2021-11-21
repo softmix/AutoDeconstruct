@@ -9,7 +9,6 @@ local function map_to_string(t)
   s = s.."}"
   return s
 end
-  
 
 local function has_resources(drill)
   local resource_categories = drill.prototype.resource_categories
@@ -121,7 +120,7 @@ local function find_drills(entity)
   if global.debug then msg_all({"autodeconstruct-debug", "found " .. #entities  .. " drills"}) end
 
   for _, e in pairs(entities) do
-    if (math.abs(e.position.x - position.x) < e.prototype.mining_drill_radius and 
+    if (math.abs(e.position.x - position.x) < e.prototype.mining_drill_radius and
         math.abs(e.position.y - position.y) < e.prototype.mining_drill_radius) then
       autodeconstruct.check_drill(e)
     end
@@ -138,7 +137,7 @@ function autodeconstruct.init_globals()
   -- Find largest-range miner in the game
   global.max_radius = 0.99
   local drill_prototypes = game.get_filtered_entity_prototypes{{filter="type",type="mining-drill"}}
-  for _,p in pairs(drill_prototypes) do
+  for _, p in pairs(drill_prototypes) do
     if p.mining_drill_radius then
       if p.mining_drill_radius > global.max_radius then
         global.max_radius = p.mining_drill_radius
@@ -146,7 +145,7 @@ function autodeconstruct.init_globals()
       end
     end
   end
-  
+
   -- Look for existing depleted miners based on current settings
   local drill_entities = find_all_entities('mining-drill')
   for _, drill_entity in pairs(drill_entities) do
@@ -196,7 +195,6 @@ function autodeconstruct.deconstruct_target(drill)
       local targeting = find_targeting(target, {'mining-drill', 'inserter'})
 
       if targeting ~= nil then
-      
         local chest_is_idle = true
         for i = 1, #targeting do
           if not targeting[i].to_be_deconstructed(targeting[i].force) and targeting[i] ~= drill then
@@ -204,7 +202,7 @@ function autodeconstruct.deconstruct_target(drill)
             break
           end
         end
-        
+
         if chest_is_idle then
           -- we are the only one targeting
           if target.to_be_deconstructed(target.force) then
@@ -225,7 +223,7 @@ end
 local function range(from,to,step)
   step = (from <= to) and step or -step
   local t = {}
-  for i = from, to - step, step do 
+  for i = from, to - step, step do
       t[#t + 1] = i
   end
   t = (#t>0) and t or {from}
@@ -254,7 +252,7 @@ function autodeconstruct.build_pipes(drill)
     owner     = drill.last_user,
     surface   = drill.surface
   }
-  
+
   --Space Exploration Compatibility check for space-surfaces
   local pipeType = "pipe"
   if game.active_mods["space-exploration"] then
@@ -264,13 +262,12 @@ function autodeconstruct.build_pipes(drill)
       pipeType = "se-space-pipe"
     end
   end
-  
+
   -- Drills only have one fluidbox, get the first
   local fluidbox_prototype = drill.fluidbox.get_prototype(1)
   local neighbours = drill.neighbours[1]
-  
+
   if neighbours then
-    
     -- Connection position index is different from entity.direction
     local conn_index = 1  -- north
     if drillData.direction == defines.direction.east  then
@@ -280,12 +277,12 @@ function autodeconstruct.build_pipes(drill)
     elseif drillData.direction == defines.direction.west then
       conn_index = 4
     end
-  
+
     local connectors = {}
     for _, conn in pairs(fluidbox_prototype.pipe_connections) do
       connectors[#connectors + 1] = conn.positions[conn_index]
     end
-    
+
     for _,neighbour in pairs(neighbours) do
       -- see if this neighbour is up, down, left, or right
       -- whichever distance is greatest is what side it's on, if it's generally square
@@ -330,7 +327,6 @@ function autodeconstruct.build_pipes(drill)
       end
     end
   end
-  
 end
 
 function autodeconstruct.order_deconstruction(drill)
@@ -372,13 +368,13 @@ function autodeconstruct.order_deconstruction(drill)
 
     return
   end
-  
+
   if drill.burner and #find_extracting(drill)>0 then
     debug_message_with_position(drill, "is part of inserter chain, skipping")
 
     return
   end
-  
+
   -- end guards
 
   if settings.global['autodeconstruct-remove-target'].value then
@@ -406,5 +402,4 @@ function autodeconstruct.order_deconstruction(drill)
   else
     msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " " .. drill.name .. " failed to order deconstruction" })
   end
-
 end
