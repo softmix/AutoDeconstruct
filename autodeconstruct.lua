@@ -240,6 +240,15 @@ function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
   end
 end
 
+-- Find the connector pointing in the given cardinal direction
+local function find_connector_dir(connectors, side, direction)
+  for _, conn in pairs(connectors) do
+    if conn[side]*direction > 0 then
+      return conn
+    end
+  end
+end
+
 function autodeconstruct.build_pipes(drill)
   -- future improvement: a mod setting for the pipeType to allow modded pipes
   local drillData = {
@@ -269,15 +278,8 @@ function autodeconstruct.build_pipes(drill)
 
   if neighbours then
     -- Connection position index is different from entity.direction
-    local conn_index = 1  -- north
-    if drillData.direction == defines.direction.east  then
-      conn_index = 2
-    elseif drillData.direction == defines.direction.south then
-      conn_index = 3
-    elseif drillData.direction == defines.direction.west then
-      conn_index = 4
-    end
-
+    -- {0,2,4,6} ==> {1,2,3,4}
+    local conn_index = math.floor(drillData.direction/2)+1
     local connectors = {}
     for _, conn in pairs(fluidbox_prototype.pipe_connections) do
       connectors[#connectors + 1] = conn.positions[conn_index]
@@ -288,42 +290,28 @@ function autodeconstruct.build_pipes(drill)
       -- whichever distance is greatest is what side it's on, if it's generally square
       local xd = neighbour.position.x - drill.position.x
       local yd = neighbour.position.y - drill.position.y
+      local connector = nil
       if math.abs(xd) > math.abs(yd) then
         if xd > 0 then
           -- to the east
-          for _, conn in pairs(connectors) do
-            if conn.x > 0 then
-              autodeconstruct.build_pipe(drillData, pipeType, conn)
-              break
-            end
-          end
+          connector = find_connector_dir(connectors, "x", 1)
         else
           -- to the west
-          for _, conn in pairs(connectors) do
-            if conn.x < 0 then
-              autodeconstruct.build_pipe(drillData, pipeType, conn)
-              break
-            end
-          end
+          connector = find_connector_dir(connectors, "x", -1)
         end
       else
         if yd > 0 then
           -- to the north
-          for _, conn in pairs(connectors) do
-            if conn.y > 0 then
-              autodeconstruct.build_pipe(drillData, pipeType, conn)
-              break
-            end
-          end
+          connector = find_connector_dir(connectors, "y", 1)
         else
           -- to the south
-          for _, conn in pairs(connectors) do
-            if conn.y < 0 then
-              autodeconstruct.build_pipe(drillData, pipeType, conn)
-              break
-            end
-          end
+          connector = find_connector_dir(connectors, "y", -1)
         end
+      end
+      if connector then
+        autodeconstruct.build_pipe(drillData, pipeType, connector)
+      else
+        debug_message_with_position(drill, "can't find fluid connector pointing toward neighbor at "..util.positiontostr(neighbour.position))
       end
     end
   end
