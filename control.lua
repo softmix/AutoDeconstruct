@@ -29,22 +29,23 @@ script.on_configuration_changed(function()
   if err then msg_all({"autodeconstruct-err-generic", err}) end
 end)
 
-script.on_event(defines.events.on_cancelled_deconstruction, function(event)
-  local _, err = pcall(autodeconstruct.on_cancelled_deconstruction, event)
-  if err then msg_all({"autodeconstruct-err-specific", "on_cancelled_deconstruction", err}) end
+script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
+  if (event.setting == "autodeconstruct-remove-fluid-drills" and
+      settings.global['autodeconstruct-remove-fluid-drills'].value == true) then
+    local _, err = pcall(autodeconstruct.init_globals)
+    if err then msg_all({"autodeconstruct-err-generic", err}) end
+  end
 end)
+
+script.on_event(defines.events.on_cancelled_deconstruction, 
+  function(event)
+    local _, err = pcall(autodeconstruct.on_cancelled_deconstruction, event)
+    if err then msg_all({"autodeconstruct-err-specific", "on_cancelled_deconstruction", err}) end
+  end,
+  {{filter="type", type="mining-drill"}}
+)
 
 script.on_event(defines.events.on_resource_depleted, function(event)
   local _, err = pcall(autodeconstruct.on_resource_depleted, event)
   if err then msg_all({"autodeconstruct-err-specific", "on_resource_depleted", err}) end
-end)
-
-script.on_event(defines.events.on_robot_built_entity, function(event)
-  local _, err = pcall(autodeconstruct.on_built_entity, event)
-  if err then msg_all({"autodeconstruct-err-specific", "on_robot_built_entity", err}) end
-end)
-
-script.on_event(defines.events.on_built_entity, function(event)
-  local _, err = pcall(autodeconstruct.on_built_entity, event)
-  if err then msg_all({"autodeconstruct-err-specific", "on_built_entity", err}) end
 end)
