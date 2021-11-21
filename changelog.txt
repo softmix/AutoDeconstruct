@@ -1,4 +1,25 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.0
+Date: 2021-11-21
+  New:
+    - Added support for drills with multiple resource types (robot256)
+  Compatibility:
+    - Improved multi-surface compatibility (Nicolas Lang)
+  Bugfixes:
+    - Removed empty fluid miners when setting changes (robot256)
+    - Fixed chests being deconstructed while still in use (robot256)
+    - Fixed a potential crash if an inserter is nearby the chest but not targeting the chest (robot256)
+    - Improved handling of invalid surfaces (Nicolas Lang)
+  Optimizations:
+    - Improved UPS by using on_event filters (robot256)
+    - Moved max_radius calculation to init_globals (robot256)
+  Changes:
+    - Refactored pipe building (Nicolas Lang)
+    - Only build pipes if a miner has more than one connection (robot256)
+    - Deconstruct inserters feeding fuel to burner inserters (robot256)
+    - Only build pipes to connections that are in use (robot256)
+    - Updated translations from crowdin
+---------------------------------------------------------------------------------------------------
 Version: 0.2.1
 Date: 2021-07-01
   Compatibility:
