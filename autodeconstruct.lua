@@ -66,7 +66,7 @@ local function find_target(entity)
   end
 end
 
-local function find_targeting(entity)
+local function find_targeting(entity, types)
   local range = global.max_radius
   local position = entity.position
 
@@ -76,7 +76,7 @@ local function find_targeting(entity)
   local surface = entity.surface
   local targeting = {}
 
-  local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type={'mining-drill', 'inserter'}}
+  local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type=types}
   for i = 1, #entities do
     if find_target(entities[i]) == entity then
       targeting[#targeting + 1] = entities[i]
@@ -171,7 +171,7 @@ function autodeconstruct.deconstruct_target(drill)
 
   if target ~= nil and target.minable and target.prototype.selectable_in_game then
     if target.type == "logistic-container" or target.type == "container" then
-      local targeting = find_targeting(target)
+      local targeting = find_targeting(target, {'mining-drill', 'inserter'})
 
       if targeting ~= nil then
       
@@ -311,12 +311,20 @@ function autodeconstruct.order_deconstruction(drill)
 
   if drill.order_deconstruction(drill.force, drill.last_user) then
     debug_message_with_position(drill, "marked for deconstruction")
+    -- Handle pipes
     if has_fluid and settings.global['autodeconstruct-build-pipes'].value then
       if #drill.fluidbox.get_connections(1) > 1 then
         debug_message_with_position(drill, "adding pipe blueprints")
         autodeconstruct.build_pipes(drill)
       else
         debug_message_with_position(drill, "skipping pipe blueprints, only one connection")
+      end
+    end
+    -- Check for inserters providing fuel to this miner
+    if drill.burner then
+      local targeting = find_targeting(drill, {'inserter'})
+      for _,e in pairs(targeting) do
+        e.order_deconstruction(e.force, e.last_user)
       end
     end
   else
