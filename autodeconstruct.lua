@@ -88,6 +88,28 @@ local function find_targeting(entity, types)
   return targeting
 end
 
+local function find_extracting(entity)
+  local range = global.max_radius
+  local position = entity.position
+
+  local top_left = {x = position.x - range, y = position.y - range}
+  local bottom_right = {x = position.x + range, y = position.y + range}
+
+  local surface = entity.surface
+  local extracting = {}
+
+  local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type="inserter"}
+  for i = 1, #entities do
+    if entities[i].pickup_target == entity then
+      extracting[#extracting + 1] = entities[i]
+    end
+  end
+
+  if global.debug then msg_all({"autodeconstruct-debug", "found " .. #extracting .. " extracting"}) end
+
+  return extracting
+end
+
 local function find_drills(entity)
   local position = entity.position
   local surface = entity.surface
@@ -246,21 +268,70 @@ function autodeconstruct.build_pipes(drill)
   
   -- Drills only have one fluidbox, get the first
   local fluidbox_prototype = drill.fluidbox.get_prototype(1)
+  local neighbours = drill.neighbours[1]
   
-  -- Connection position index is different from entity.direction
-  local conn_index = 1  -- north
-  if drillData.direction == defines.direction.east  then
-    conn_index = 2
-  elseif drillData.direction == defines.direction.south then
-    conn_index = 3
-  elseif drillData.direction == defines.direction.west then
-    conn_index = 4
+  if neighbours then
+    
+    -- Connection position index is different from entity.direction
+    local conn_index = 1  -- north
+    if drillData.direction == defines.direction.east  then
+      conn_index = 2
+    elseif drillData.direction == defines.direction.south then
+      conn_index = 3
+    elseif drillData.direction == defines.direction.west then
+      conn_index = 4
+    end
+  
+    local connectors = {}
+    for _, conn in pairs(fluidbox_prototype.pipe_connections) do
+      connectors[#connectors + 1] = conn.positions[conn_index]
+    end
+    
+    for _,neighbour in pairs(neighbours) do
+      -- see if this neighbour is up, down, left, or right
+      -- whichever distance is greatest is what side it's on, if it's generally square
+      local xd = neighbour.position.x - drill.position.x
+      local yd = neighbour.position.y - drill.position.y
+      if math.abs(xd) > math.abs(yd) then
+        if xd > 0 then
+          -- to the east
+          for _, conn in pairs(connectors) do
+            if conn.x > 0 then
+              autodeconstruct.build_pipe(drillData, pipeType, conn)
+              break
+            end
+          end
+        else
+          -- to the west
+          for _, conn in pairs(connectors) do
+            if conn.x < 0 then
+              autodeconstruct.build_pipe(drillData, pipeType, conn)
+              break
+            end
+          end
+        end
+      else
+        if yd > 0 then
+          -- to the north
+          for _, conn in pairs(connectors) do
+            if conn.y > 0 then
+              autodeconstruct.build_pipe(drillData, pipeType, conn)
+              break
+            end
+          end
+        else
+          -- to the south
+          for _, conn in pairs(connectors) do
+            if conn.y < 0 then
+              autodeconstruct.build_pipe(drillData, pipeType, conn)
+              break
+            end
+          end
+        end
+      end
+    end
   end
   
-  for _, conn in pairs(fluidbox_prototype.pipe_connections) do
-    -- place pipes to this connection point for the given rotation
-    autodeconstruct.build_pipe(drillData, pipeType, conn.positions[conn_index])
-  end
 end
 
 function autodeconstruct.order_deconstruction(drill)
@@ -302,7 +373,13 @@ function autodeconstruct.order_deconstruction(drill)
 
     return
   end
+  
+  if drill.burner and #find_extracting(drill)>0 then
+    debug_message_with_position(drill, "is part of inserter chain, skipping")
 
+    return
+  end
+  
   -- end guards
 
   if settings.global['autodeconstruct-remove-target'].value then
