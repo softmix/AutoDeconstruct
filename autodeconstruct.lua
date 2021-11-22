@@ -220,33 +220,54 @@ function autodeconstruct.deconstruct_target(drill)
   end
 end
 
-local function range(from,to,step)
-  step = (from <= to) and step or -step
-  local t = {}
-  for i = from, to - step, step do
-      t[#t + 1] = i
-  end
-  t = (#t>0) and t or {from}
-  --log("from:"..tostring(from)..",to:"..tostring(to)..", result:"..serpent.block(t, {comment = false, numformat = '%1.8g', compact = true } ))
-  return t
-end
-
 function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
   --log("pipeTarget"..serpent.block(pipeTarget, {comment = false, numformat = '%1.8g', compact = true } ).."; drillData.position" .. serpent.block(drillData.position, {comment = false, numformat = '%1.8g', compact = true } ))
-  for _, x in pairs(range(drillData.position.x, drillData.position.x + pipeTarget.x, 1)) do
-    for _, y in pairs(range(drillData.position.y, drillData.position.y + pipeTarget.y, 1)) do
-      drillData.surface.create_entity{name="entity-ghost", player = drillData.owner, position = {x = x, y = y}, force=drillData.force, inner_name=pipeType}
-    end
+  -- build in X first, then in Y
+  local x = 0
+  local y = 0
+  
+  -- Build center first
+  --log("building center pipe at "..util.positiontostr({x=x,y=y}))
+  drillData.surface.create_entity{
+          name="entity-ghost", 
+          player = drillData.owner, 
+          position = {x = drillData.position.x + x, y = drillData.position.y + y}, 
+          force=drillData.force, 
+          inner_name=pipeType
+        }
+  -- Build X pipes left/right from center
+  while x ~= pipeTarget.x do
+    x = ((pipeTarget.x > x) and (x+1)) or ((pipeTarget.x < x) and (x-1))
+    --log("building X pipe at "..util.positiontostr({x=x,y=y}))
+    drillData.surface.create_entity{
+          name="entity-ghost", 
+          player = drillData.owner, 
+          position = {x = drillData.position.x + x, y = drillData.position.y + y}, 
+          force=drillData.force, 
+          inner_name=pipeType
+        }
+  end
+  -- Build Y pipes up/down from where X left off
+  while y ~= pipeTarget.y do
+    y = ((pipeTarget.y > y) and (y+1)) or ((pipeTarget.y < y) and (y-1))
+    --log("building Y pipe at "..util.positiontostr({x=x,y=y}))
+    drillData.surface.create_entity{
+          name="entity-ghost", 
+          player = drillData.owner, 
+          position = {x = drillData.position.x + x, y = drillData.position.y + y}, 
+          force=drillData.force, 
+          inner_name=pipeType
+        }
   end
 end
 
--- Find the connector pointing in the given cardinal direction
-local function find_connector_dir(connectors, side, direction)
-  for _, conn in pairs(connectors) do
-    if conn[side]*direction > 0 then
-      return conn
-    end
-  end
+-- Round selection box to nearest integer coordinates
+local function snap_box_to_grid(box)
+  box.left_top.x = math.floor(box.left_top.x*2+0.5)/2
+  box.left_top.y = math.floor(box.left_top.y*2+0.5)/2
+  box.right_bottom.x = math.floor(box.right_bottom.x*2+0.5)/2
+  box.right_bottom.y = math.floor(box.right_bottom.y*2+0.5)/2
+  return box
 end
 
 function autodeconstruct.build_pipes(drill)
@@ -273,46 +294,56 @@ function autodeconstruct.build_pipes(drill)
   end
 
   -- Drills only have one fluidbox, get the first
-  local fluidbox_prototype = drill.fluidbox.get_prototype(1)
-  local neighbours = drill.neighbours[1]
+  local connected_fluidboxes = drill.fluidbox.get_connections(1)
 
-  if neighbours then
+  if connected_fluidboxes then
+    -- Find the points at the edge of the drill where the pipes actually meet
     -- Connection position index is different from entity.direction
     -- {0,2,4,6} ==> {1,2,3,4}
     local conn_index = math.floor(drillData.direction/2)+1
-    local connectors = {}
-    for _, conn in pairs(fluidbox_prototype.pipe_connections) do
-      connectors[#connectors + 1] = conn.positions[conn_index]
+    -- Box with coordinates of entity grid boundary
+    local box = snap_box_to_grid(drill.selection_box)
+    -- Box with coordinates of pipes placed inside the entity boundary
+    local pipe_box = {left_top =     {x = box.left_top.x - drillData.position.x + 0.5,     y = box.left_top.y - drillData.position.y + 0.5}, 
+                      right_bottom = {x = box.right_bottom.x - drillData.position.x - 0.5, y = box.right_bottom.y - drillData.position.y - 0.5}}
+    local junctions = {}
+    local pipe_offsets = {}
+    for k, connection in pairs(drill.fluidbox.get_prototype(1).pipe_connections) do
+      local conn = connection.positions[conn_index]  -- offset from center of where mating pipe goes
+      junctions[k] = {x = util.clamp(conn.x + drillData.position.x, box.left_top.x, box.right_bottom.x),  -- world coordinate of where mating pipe meets entity
+                      y = util.clamp(conn.y + drillData.position.y, box.left_top.y, box.right_bottom.y)}
+      pipe_offsets[k] = {x = util.clamp(conn.x, pipe_box.left_top.x, pipe_box.right_bottom.x),      -- offset from center to where internal pipe goes
+                         y = util.clamp(conn.y, pipe_box.left_top.y, pipe_box.right_bottom.y)}
     end
-
-    for _,neighbour in pairs(neighbours) do
-      -- see if this neighbour is up, down, left, or right
-      -- whichever distance is greatest is what side it's on, if it's generally square
-      local xd = neighbour.position.x - drill.position.x
-      local yd = neighbour.position.y - drill.position.y
-      local connector = nil
-      if math.abs(xd) > math.abs(yd) then
-        if xd > 0 then
-          -- to the east
-          connector = find_connector_dir(connectors, "x", 1)
-        else
-          -- to the west
-          connector = find_connector_dir(connectors, "x", -1)
-        end
-      else
-        if yd > 0 then
-          -- to the north
-          connector = find_connector_dir(connectors, "y", 1)
-        else
-          -- to the south
-          connector = find_connector_dir(connectors, "y", -1)
+    
+    -- See how many neighboring fluidboxes we can find
+    local pipes_built = 0
+    for _,other_fluidbox in pairs(connected_fluidboxes) do
+      local other_box = snap_box_to_grid(other_fluidbox.owner.selection_box)
+      
+      -- Look for any of our junctions that lines up on the target's boundary box
+      local this_pipe_built = false
+      for k, junc in pairs(junctions) do
+        if (junc.y == other_box.right_bottom.y and junc.x >= other_box.left_top.x and junc.x <= other_box.right_bottom.x) or -- match on north side
+           (junc.y == other_box.left_top.y and junc.x >= other_box.left_top.x and junc.x <= other_box.right_bottom.x) or     -- match on south side
+           (junc.x == other_box.right_bottom.x and junc.y >= other_box.left_top.y and junc.y <= other_box.right_bottom.y) or -- match on east side
+           (junc.x == other_box.left_top.x and junc.y >= other_box.left_top.y and junc.y <= other_box.right_bottom.y) then   -- match on west side
+          
+          --log("found junction "..util.positiontostr(junc).." is adjacent to "..other_fluidbox.owner.name.." box "..string.gsub(serpent.block(other_box),"[\n ]",""))
+          autodeconstruct.build_pipe(drillData, pipeType, pipe_offsets[k])
+          pipes_built = pipes_built + 1
+          this_pipe_built = true
         end
       end
-      if connector then
-        autodeconstruct.build_pipe(drillData, pipeType, connector)
-      else
-        debug_message_with_position(drill, "can't find fluid connector pointing toward neighbor at "..util.positiontostr(neighbour.position))
+      if not this_pipe_built then
+        debug_message_with_position(drill, "can't find fluid connectors pointing toward neighbor at "..util.positiontostr(other_fluidbox.owner.position))
       end
+    end
+    
+    if pipes_built > 0 then
+      debug_message_with_position(drill, "connected pipes to "..tostring(pipes_built).." neighbors")
+    else
+      debug_message_with_position(drill, "can't find fluid connectors pointing toward any neighbors")
     end
   end
 end
