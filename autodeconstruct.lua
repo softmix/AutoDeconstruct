@@ -133,6 +133,10 @@ local function debug_message_with_position(entity, msg)
   msg_all({"autodeconstruct-debug", util.positiontostr(entity.position) .. " " .. entity.name  .. " " .. msg})
 end
 
+function autodeconstruct.is_valid_pipe(name)
+  return game.entity_prototypes[name] and game.entity_prototypes[name].type == "pipe"
+end
+
 function autodeconstruct.init_globals()
   -- Find largest-range miner in the game
   global.max_radius = 0.99
@@ -270,7 +274,7 @@ local function snap_box_to_grid(box)
   return box
 end
 
-function autodeconstruct.build_pipes(drill)
+function autodeconstruct.build_pipes(drill, pipeType)
   -- future improvement: a mod setting for the pipeType to allow modded pipes
   local drillData = {
     position  = {
@@ -282,16 +286,6 @@ function autodeconstruct.build_pipes(drill)
     owner     = drill.last_user,
     surface   = drill.surface
   }
-
-  --Space Exploration Compatibility check for space-surfaces
-  local pipeType = "pipe"
-  if game.active_mods["space-exploration"] then
-    local se_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = drillData.surface.index})
-    local is_space = remote.call("space-exploration", "get_zone_is_space", {zone_index = se_zone.index})
-    if is_space then
-      pipeType = "se-space-pipe"
-    end
-  end
 
   -- Drills only have one fluidbox, get the first
   local connected_fluidboxes = drill.fluidbox.get_connections(1)
@@ -355,10 +349,32 @@ function autodeconstruct.order_deconstruction(drill)
     return
   end
   local has_fluid = false
+  local pipeType = nil
   if drill.fluidbox and #drill.fluidbox > 0 then
     has_fluid = true
     if not settings.global['autodeconstruct-remove-fluid-drills'].value then
       debug_message_with_position(drill, "has a non-empty fluidbox and fluid deconstruction is not enabled, skipping")
+
+      return
+    end
+    --Space Exploration Compatibility check for space-surfaces
+    -- Select the pipe to use for replacements
+    pipeType = settings.global['autodeconstruct-pipe-name'].value
+    local is_space = false
+    if game.active_mods["space-exploration"] then
+      local se_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = drillData.surface.index})
+      is_space = remote.call("space-exploration", "get_zone_is_space", {zone_index = se_zone.index})
+      if is_space then
+        pipeType = settings.global['autodeconstruct-space-pipe-name'].value
+      end
+    end
+
+    if not autodeconstruct.is_valid_pipe(pipeType) then
+      if is_space then
+        debug_message_with_position(drill, "can't find space pipe named '"..pipeType.."' to infill depleted fluid miner in space.")
+      else
+        debug_message_with_position(drill, "can't find pipe named '"..pipeType.."' to infill depleted fluid miner.")
+      end
 
       return
     end
@@ -406,7 +422,7 @@ function autodeconstruct.order_deconstruction(drill)
     if has_fluid and settings.global['autodeconstruct-build-pipes'].value then
       if #drill.fluidbox.get_connections(1) > 1 then
         debug_message_with_position(drill, "adding pipe blueprints")
-        autodeconstruct.build_pipes(drill)
+        autodeconstruct.build_pipes(drill, pipeType)
       else
         debug_message_with_position(drill, "skipping pipe blueprints, only one connection")
       end
