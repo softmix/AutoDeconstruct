@@ -55,6 +55,7 @@ end
 
 local function find_target(entity)
   if entity.drop_target then
+    if global.debug then msg_all({"autodeconstruct-debug", "found " .. entity.drop_target.name .. " at " .. util.positiontostr(entity.drop_target.position)}) end
     return entity.drop_target
   else
     local entities = entity.surface.find_entities_filtered{position=entity.drop_position}
@@ -133,6 +134,10 @@ local function debug_message_with_position(entity, msg)
   msg_all({"autodeconstruct-debug", util.positiontostr(entity.position) .. " " .. entity.name  .. " " .. msg})
 end
 
+function autodeconstruct.is_valid_pipe(name)
+  return game.entity_prototypes[name] and game.entity_prototypes[name].type == "pipe"
+end
+
 function autodeconstruct.init_globals()
   -- Find largest-range miner in the game
   global.max_radius = 0.99
@@ -208,11 +213,15 @@ function autodeconstruct.deconstruct_target(drill)
           if target.to_be_deconstructed(target.force) then
             target.cancel_deconstruction(target.force)
           end
-
+          local ent_dat = {name=target.name, position=target.position}
           if target.order_deconstruction(target.force, target.last_user) then
-            debug_message_with_position(target, "marked for deconstruction")
+            if target and target.valid then
+              debug_message_with_position(target, "marked for deconstruction")
+            else
+              debug_message_with_position(ent_dat, "instantly deconstructed")
+            end
           else
-            msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(target.position) .. " failed to order deconstruction on " .. target.name})
+            msg_all({"autodeconstruct-err-specific", "target.order_deconstruction", util.positiontostr(ent_dat.position) .. " failed to order deconstruction on " .. ent_dat.name})
           end
         end
       end
@@ -270,7 +279,7 @@ local function snap_box_to_grid(box)
   return box
 end
 
-function autodeconstruct.build_pipes(drill)
+function autodeconstruct.build_pipes(drill, pipeType)
   -- future improvement: a mod setting for the pipeType to allow modded pipes
   local drillData = {
     position  = {
@@ -282,16 +291,6 @@ function autodeconstruct.build_pipes(drill)
     owner     = drill.last_user,
     surface   = drill.surface
   }
-
-  --Space Exploration Compatibility check for space-surfaces
-  local pipeType = "pipe"
-  if game.active_mods["space-exploration"] then
-    local se_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = drillData.surface.index})
-    local is_space = remote.call("space-exploration", "get_zone_is_space", {zone_index = se_zone.index})
-    if is_space then
-      pipeType = "se-space-pipe"
-    end
-  end
 
   -- Drills only have one fluidbox, get the first
   local connected_fluidboxes = drill.fluidbox.get_connections(1)
@@ -355,10 +354,32 @@ function autodeconstruct.order_deconstruction(drill)
     return
   end
   local has_fluid = false
+  local pipeType = nil
   if drill.fluidbox and #drill.fluidbox > 0 then
     has_fluid = true
     if not settings.global['autodeconstruct-remove-fluid-drills'].value then
       debug_message_with_position(drill, "has a non-empty fluidbox and fluid deconstruction is not enabled, skipping")
+
+      return
+    end
+    --Space Exploration Compatibility check for space-surfaces
+    -- Select the pipe to use for replacements
+    pipeType = settings.global['autodeconstruct-pipe-name'].value
+    local is_space = false
+    if game.active_mods["space-exploration"] then
+      local se_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = drill.surface.index})
+      is_space = remote.call("space-exploration", "get_zone_is_space", {zone_index = se_zone.index})
+      if is_space then
+        pipeType = settings.global['autodeconstruct-space-pipe-name'].value
+      end
+    end
+
+    if not autodeconstruct.is_valid_pipe(pipeType) then
+      if is_space then
+        debug_message_with_position(drill, "can't find space pipe named '"..pipeType.."' to infill depleted fluid miner in space.")
+      else
+        debug_message_with_position(drill, "can't find pipe named '"..pipeType.."' to infill depleted fluid miner.")
+      end
 
       return
     end
@@ -399,24 +420,29 @@ function autodeconstruct.order_deconstruction(drill)
   if settings.global['autodeconstruct-remove-target'].value then
     autodeconstruct.deconstruct_target(drill)
   end
-
+  
+  local ent_dat = {name=drill.name, position=drill.position}
   if drill.order_deconstruction(drill.force, drill.last_user) then
-    debug_message_with_position(drill, "marked for deconstruction")
-    -- Handle pipes
-    if has_fluid and settings.global['autodeconstruct-build-pipes'].value then
-      if #drill.fluidbox.get_connections(1) > 1 then
-        debug_message_with_position(drill, "adding pipe blueprints")
-        autodeconstruct.build_pipes(drill)
-      else
-        debug_message_with_position(drill, "skipping pipe blueprints, only one connection")
+    if drill and drill.valid then
+      debug_message_with_position(drill, "marked for deconstruction")
+      -- Handle pipes
+      if has_fluid and settings.global['autodeconstruct-build-pipes'].value then
+        if #drill.fluidbox.get_connections(1) > 1 then
+          debug_message_with_position(drill, "adding pipe blueprints")
+          autodeconstruct.build_pipes(drill, pipeType)
+        else
+          debug_message_with_position(drill, "skipping pipe blueprints, only one connection")
+        end
       end
-    end
-    -- Check for inserters providing fuel to this miner
-    if drill.burner then
-      local targeting = find_targeting(drill, {'inserter'})
-      for _,e in pairs(targeting) do
-        e.order_deconstruction(e.force, e.last_user)
+      -- Check for inserters providing fuel to this miner
+      if drill.valid and drill.burner then
+        local targeting = find_targeting(drill, {'inserter'})
+        for _,e in pairs(targeting) do
+          e.order_deconstruction(e.force, e.last_user)
+        end
       end
+    else
+      msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(ent_dat.position) .. " " .. ent_dat.name .. " instantly deconstructed, nothing else done" })
     end
   else
     msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " " .. drill.name .. " failed to order deconstruction" })

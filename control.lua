@@ -25,19 +25,30 @@ script.on_init(function()
 end)
 
 script.on_configuration_changed(function()
+  if not autodeconstruct.is_valid_pipe(settings.global["autodeconstruct-pipe-name"].value) then
+    msg_all({"autodeconstruct-err-pipe-name", settings.global["autodeconstruct-pipe-name"].value})
+  end
+  if game.active_mods["space-exploration"] and 
+     not autodeconstruct.is_valid_pipe(settings.global["autodeconstruct-space-pipe-name"].value) then
+    msg_all({"autodeconstruct-err-pipe-name", settings.global["autodeconstruct-space-pipe-name"].value})
+  end
   local _, err = pcall(autodeconstruct.init_globals)
   if err then msg_all({"autodeconstruct-err-generic", err}) end
 end)
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
-  if (event.setting == "autodeconstruct-remove-fluid-drills" and
+  if (event.setting == "autodeconstruct-pipe-name" or event.setting == "autodeconstruct-space-pipe-name") then
+    if not autodeconstruct.is_valid_pipe(settings.global[event.setting].value) then
+      msg_all({"autodeconstruct-err-pipe-name", settings.global[event.setting].value})
+    end
+  elseif (event.setting == "autodeconstruct-remove-fluid-drills" and
       settings.global['autodeconstruct-remove-fluid-drills'].value == true) then
     local _, err = pcall(autodeconstruct.init_globals)
     if err then msg_all({"autodeconstruct-err-generic", err}) end
   end
 end)
 
-script.on_event(defines.events.on_cancelled_deconstruction, 
+script.on_event(defines.events.on_cancelled_deconstruction,
   function(event)
     local _, err = pcall(autodeconstruct.on_cancelled_deconstruction, event)
     if err then msg_all({"autodeconstruct-err-specific", "on_cancelled_deconstruction", err}) end
