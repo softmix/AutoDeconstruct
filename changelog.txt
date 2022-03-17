@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.1
+Date: 2022-03-16
+  Compatibility:
+    - Added mod settings to customize what pipe is used when replacing miners (i.e. kr-steel-pipe).
+  Bugfixes:
+    - Fixed crashes when Editor Extensions "instant deconstruction" is enabled.
+---------------------------------------------------------------------------------------------------
 Version: 0.3.0
 Date: 2021-11-21
   New:

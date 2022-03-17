@@ -25,11 +25,11 @@ script.on_init(function()
 end)
 
 script.on_configuration_changed(function()
-  if not autodeconstruct.is_valid_pipe(settings.global["autodeconstruct-pipe-name"].value]) then
+  if not autodeconstruct.is_valid_pipe(settings.global["autodeconstruct-pipe-name"].value) then
     msg_all({"autodeconstruct-err-pipe-name", settings.global["autodeconstruct-pipe-name"].value})
   end
   if game.active_mods["space-exploration"] and 
-     not autodeconstruct.is_valid_pipe(settings.global["autodeconstruct-space-pipe-name"].value]) then
+     not autodeconstruct.is_valid_pipe(settings.global["autodeconstruct-space-pipe-name"].value) then
     msg_all({"autodeconstruct-err-pipe-name", settings.global["autodeconstruct-space-pipe-name"].value})
   end
   local _, err = pcall(autodeconstruct.init_globals)
@@ -38,7 +38,7 @@ end)
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if (event.setting == "autodeconstruct-pipe-name" or event.setting == "autodeconstruct-space-pipe-name") then
-    if not autodeconstruct.is_valid_pipe(settings.global[event.setting].value]) then
+    if not autodeconstruct.is_valid_pipe(settings.global[event.setting].value) then
       msg_all({"autodeconstruct-err-pipe-name", settings.global[event.setting].value})
     end
   elseif (event.setting == "autodeconstruct-remove-fluid-drills" and
