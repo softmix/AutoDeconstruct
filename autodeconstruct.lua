@@ -229,14 +229,16 @@ function autodeconstruct.deconstruct_target(drill)
   end
 end
 
+-- Build pipes from the given relative target to the center of the miner
 function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
-  --log("pipeTarget"..serpent.block(pipeTarget, {comment = false, numformat = '%1.8g', compact = true } ).."; drillData.position" .. serpent.block(drillData.position, {comment = false, numformat = '%1.8g', compact = true } ))
-  -- build in X first, then in Y
-  local x = 0
-  local y = 0
+  --log("pipeTarget: "..util.positiontostr(pipeTarget).."; drillData.position: "..util.positiontostr(drillData.position))
 
-  -- Build center first
-  --log("building center pipe at "..util.positiontostr({x=x,y=y}))
+  -- build in X first, then in Y
+  local x = pipeTarget.x
+  local y = pipeTarget.y
+
+  -- Build connection point first
+  --log("> Building connector pipe at "..util.positiontostr({x=x,y=y}))
   drillData.surface.create_entity{
           name="entity-ghost",
           player = drillData.owner,
@@ -244,10 +246,15 @@ function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
           force=drillData.force,
           inner_name=pipeType
         }
-  -- Build X pipes left/right from center
-  while x ~= pipeTarget.x do
-    x = ((pipeTarget.x > x) and (x+1)) or ((pipeTarget.x < x) and (x-1))
-    --log("building X pipe at "..util.positiontostr({x=x,y=y}))
+
+  -- Build X pipes left/right toward center (stop short if center is off-grid)
+  while math.abs(x) >= 0.75 do
+    if x > 0 then
+      x = x - 1
+    elseif x < 0 then
+      x = x + 1
+    end
+    --log("building X pipe at relative position "..util.positiontostr({x=x,y=y}))
     drillData.surface.create_entity{
           name="entity-ghost",
           player = drillData.owner,
@@ -256,10 +263,14 @@ function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
           inner_name=pipeType
         }
   end
-  -- Build Y pipes up/down from where X left off
-  while y ~= pipeTarget.y do
-    y = ((pipeTarget.y > y) and (y+1)) or ((pipeTarget.y < y) and (y-1))
-    --log("building Y pipe at "..util.positiontostr({x=x,y=y}))
+  -- Build Y pipes up/down from where X left off (stop short if center is off-grid)
+  while math.abs(y) >= 0.75 do
+    if y > 0 then
+      y = y - 1
+    elseif y < 0 then
+      y = y + 1
+    end
+    --log("building Y pipe at relative position "..util.positiontostr({x=x,y=y}))
     drillData.surface.create_entity{
           name="entity-ghost",
           player = drillData.owner,
@@ -280,7 +291,6 @@ local function snap_box_to_grid(box)
 end
 
 function autodeconstruct.build_pipes(drill, pipeType)
-  -- future improvement: a mod setting for the pipeType to allow modded pipes
   local drillData = {
     position  = {
       x = drill.position.x,
@@ -292,6 +302,8 @@ function autodeconstruct.build_pipes(drill, pipeType)
     surface   = drill.surface
   }
 
+  --log("Building pipes for drill: "..drill.name.." at "..util.positiontostr(drill.position))
+
   -- Drills only have one fluidbox, get the first
   local connected_fluidboxes = drill.fluidbox.get_connections(1)
 
@@ -300,11 +312,15 @@ function autodeconstruct.build_pipes(drill, pipeType)
     -- Connection position index is different from entity.direction
     -- {0,2,4,6} ==> {1,2,3,4}
     local conn_index = math.floor(drillData.direction/2)+1
+
     -- Box with coordinates of entity grid boundary
     local box = snap_box_to_grid(drill.selection_box)
+
     -- Box with coordinates of pipes placed inside the entity boundary
     local pipe_box = {left_top =     {x = box.left_top.x - drillData.position.x + 0.5,     y = box.left_top.y - drillData.position.y + 0.5},
                       right_bottom = {x = box.right_bottom.x - drillData.position.x - 0.5, y = box.right_bottom.y - drillData.position.y - 0.5}}
+
+    --log("Selection box: "..serpent.line(box).."\nPipe box: "..serpent.line(pipe_box))
     local junctions = {}
     local pipe_offsets = {}
     for k, connection in pairs(drill.fluidbox.get_prototype(1).pipe_connections) do
@@ -420,7 +436,7 @@ function autodeconstruct.order_deconstruction(drill)
   if settings.global['autodeconstruct-remove-target'].value then
     autodeconstruct.deconstruct_target(drill)
   end
-  
+
   local ent_dat = {name=drill.name, position=drill.position}
   if drill.order_deconstruction(drill.force, drill.last_user) then
     if drill and drill.valid then
