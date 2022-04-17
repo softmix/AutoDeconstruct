@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.2
+Date: 2022-04-17
+  Bugfixes:
+    - Fixed out-of-memory error when used with even-width fluid miners, like Bob's Steam Powered Miner.
+---------------------------------------------------------------------------------------------------
 Version: 0.3.1
 Date: 2022-03-16
   Compatibility:
