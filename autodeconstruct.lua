@@ -281,6 +281,26 @@ function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
   end
 end
 
+-- Check the center four tiles of even-sided miners to see if caddy-corner pipes need to be joined
+function autodeconstruct.join_pipes(drillData, pipeType)
+  pipeGhosts = drillData.surface.find_entities_filtered{position = drillData.position, radius = 1.1, ghost_type = "pipe"}
+  --log("> Found "..tostring(#pipeGhosts).." near center of even-sided drill at "..util.positiontostr(drillData.position))
+  if #pipeGhosts == 2 then
+    if pipeGhosts[1].position.x ~= pipeGhosts[2].position.x and pipeGhosts[1].position.y ~= pipeGhosts[2].position.y then
+      -- Build a third pipe to connect these two on a diagonal
+      --log("Building Diagonal Connecting pipe at relative position " .. util.positiontostr({x=pipeGhosts[1].position.x - drillData.position.x,y=pipeGhosts[2].position.y - drillData.position.y}) )
+      drillData.surface.create_entity{
+            name="entity-ghost",
+            player = drillData.owner,
+            position = {x = pipeGhosts[1].position.x, y = pipeGhosts[2].position.y},
+            force=drillData.force,
+            inner_name=pipeType
+          }
+    end
+  end
+
+end
+
 -- Round selection box to nearest integer coordinates
 local function snap_box_to_grid(box)
   box.left_top.x = math.floor(box.left_top.x*2+0.5)/2
@@ -352,6 +372,15 @@ function autodeconstruct.build_pipes(drill, pipeType)
       end
       if not this_pipe_built then
         debug_message_with_position(drill, "can't find fluid connectors pointing toward neighbor at "..util.positiontostr(other_fluidbox.owner.position))
+      end
+    end
+
+    -- Check if we need to fill in a corner of an even-sided miner
+    if pipes_built > 1 then
+      -- Pipe construction box is odd-sided if the miner is even-sided
+      if ((pipe_box.left_top.x - pipe_box.right_bottom.x) % 2 == 1) and
+         ((pipe_box.left_top.y - pipe_box.right_bottom.y) % 2 == 1) then
+        autodeconstruct.join_pipes(drillData, pipeType)
       end
     end
 
