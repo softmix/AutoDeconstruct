@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.3
+Date: 2022-07-04
+  Bugfixes:
+    - Fixed that miners would be instantly deconstructed in editor mode by removing player attributions from mod-generated commands. (Thanks to Raiguard for figuring it out)
+    - This fixes compatibility with Editor Extensions "testing lab" and other mods that use editor mode.
+---------------------------------------------------------------------------------------------------
 Version: 0.3.2
 Date: 2022-04-17
   Bugfixes:

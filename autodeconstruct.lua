@@ -214,7 +214,7 @@ function autodeconstruct.deconstruct_target(drill)
             target.cancel_deconstruction(target.force)
           end
           local ent_dat = {name=target.name, position=target.position}
-          if target.order_deconstruction(target.force, target.last_user) then
+          if target.order_deconstruction(target.force) then
             if target and target.valid then
               debug_message_with_position(target, "marked for deconstruction")
             else
@@ -241,7 +241,6 @@ function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
   --log("> Building connector pipe at "..util.positiontostr({x=x,y=y}))
   drillData.surface.create_entity{
           name="entity-ghost",
-          player = drillData.owner,
           position = {x = drillData.position.x + x, y = drillData.position.y + y},
           force=drillData.force,
           inner_name=pipeType
@@ -257,7 +256,6 @@ function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
     --log("building X pipe at relative position "..util.positiontostr({x=x,y=y}))
     drillData.surface.create_entity{
           name="entity-ghost",
-          player = drillData.owner,
           position = {x = drillData.position.x + x, y = drillData.position.y + y},
           force=drillData.force,
           inner_name=pipeType
@@ -273,7 +271,6 @@ function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
     --log("building Y pipe at relative position "..util.positiontostr({x=x,y=y}))
     drillData.surface.create_entity{
           name="entity-ghost",
-          player = drillData.owner,
           position = {x = drillData.position.x + x, y = drillData.position.y + y},
           force=drillData.force,
           inner_name=pipeType
@@ -291,7 +288,6 @@ function autodeconstruct.join_pipes(drillData, pipeType)
       --log("Building Diagonal Connecting pipe at relative position " .. util.positiontostr({x=pipeGhosts[1].position.x - drillData.position.x,y=pipeGhosts[2].position.y - drillData.position.y}) )
       drillData.surface.create_entity{
             name="entity-ghost",
-            player = drillData.owner,
             position = {x = pipeGhosts[1].position.x, y = pipeGhosts[2].position.y},
             force=drillData.force,
             inner_name=pipeType
@@ -467,7 +463,7 @@ function autodeconstruct.order_deconstruction(drill)
   end
 
   local ent_dat = {name=drill.name, position=drill.position}
-  if drill.order_deconstruction(drill.force, drill.last_user) then
+  if drill.order_deconstruction(drill.force) then
     if drill and drill.valid then
       debug_message_with_position(drill, "marked for deconstruction")
       -- Handle pipes
@@ -483,7 +479,7 @@ function autodeconstruct.order_deconstruction(drill)
       if drill.valid and drill.burner then
         local targeting = find_targeting(drill, {'inserter'})
         for _,e in pairs(targeting) do
-          e.order_deconstruction(e.force, e.last_user)
+          e.order_deconstruction(e.force)
         end
       end
     else
