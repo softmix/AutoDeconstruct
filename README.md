@@ -3,6 +3,7 @@ Mod for Factorio that marks drills that have no more resources to mine for decon
 
 Automatically marks your mining drills for deconstruction when they run out of resources to mine, send spent miners and their modules back to base instead of leaving them idling in the field.
 Optionally removes the chest that the drill is outputting to (enabled by default).
+Optionally places pipe blueprints to reconnect rows of fluid miners.
 
 https://mods.factorio.com/mod/AutoDeconstruct
 

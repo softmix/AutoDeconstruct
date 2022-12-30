@@ -391,7 +391,6 @@ end
 function autodeconstruct.order_deconstruction(drill)
   if drill.to_be_deconstructed(drill.force) then
     debug_message_with_position(drill, "already marked, skipping")
-
     return
   end
   local has_fluid = false

@@ -1,8 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.5
+Date: 2022-12-30
+  Changes:
+    - Updated translations from crowdin (Polish and Portugese)
+---------------------------------------------------------------------------------------------------
 Version: 0.3.4
 Date: 2022-09-30
   Changes:
-    - Updated translations from crowdin
+    - Updated translations from crowdin (Portugese)
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.3
 Date: 2022-07-04
