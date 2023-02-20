@@ -1,8 +1,12 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.6
-Date: TBD
+Date: 2023-02-19
+  Features:
+    - New setting to disable the inserter chain check. Useful for mods that add burnt fuel results like Pyanodon's mods.
+  Changes:
+    - Updated translations from crowdin (Hungarian, Norwegian, Chinese)
   Bugfixes:
-    - Pipes are now built toward ghost pipes and ghost underground pipes.
+    - Ghost pipes are now built toward existing ghost pipes and underground pipes.
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.5
 Date: 2022-12-30

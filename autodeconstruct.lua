@@ -500,7 +500,7 @@ function autodeconstruct.order_deconstruction(drill)
     return
   end
 
-  if drill.burner and #find_extracting(drill)>0 then
+  if settings.global['autodeconstruct-preserve-inserter-chains'].value and drill.burner and #find_extracting(drill)>0 then
     debug_message_with_position(drill, "is part of inserter chain, skipping")
 
     return

@@ -1,10 +1,17 @@
 data:extend({
   {
     type = "bool-setting",
-    name = "autodeconstruct-remove-target",
+    name = "autodeconstruct-preserve-inserter-chains",
     setting_type = "runtime-global",
     default_value = true,
     order = "ad-a",
+  },
+  {
+    type = "bool-setting",
+    name = "autodeconstruct-remove-target",
+    setting_type = "runtime-global",
+    default_value = true,
+    order = "ad-aa",
   },
   {
     type = "bool-setting",
