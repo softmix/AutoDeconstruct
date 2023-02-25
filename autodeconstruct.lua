@@ -423,7 +423,7 @@ function autodeconstruct.build_pipes(drill, pipeType)
   
   -- Only build pipes if we found more than 1 connecting point
   if #pipes_to_build > 1 then
-    for pipe_target in pipes_to_build do
+    for k, pipe_target in pairs(pipes_to_build) do
       autodeconstruct.build_pipe(drillData, pipeType, pipe_target)
     end
       
