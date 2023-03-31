@@ -243,7 +243,8 @@ function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
           name="entity-ghost",
           position = {x = drillData.position.x + x, y = drillData.position.y + y},
           force=drillData.force,
-          inner_name=pipeType
+          inner_name=pipeType,
+          raise_built=true
         }
 
   -- Build X pipes left/right toward center (stop short if center is off-grid)
@@ -258,7 +259,8 @@ function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
           name="entity-ghost",
           position = {x = drillData.position.x + x, y = drillData.position.y + y},
           force=drillData.force,
-          inner_name=pipeType
+          inner_name=pipeType,
+          raise_built=true
         }
   end
   -- Build Y pipes up/down from where X left off (stop short if center is off-grid)
@@ -273,7 +275,8 @@ function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
           name="entity-ghost",
           position = {x = drillData.position.x + x, y = drillData.position.y + y},
           force=drillData.force,
-          inner_name=pipeType
+          inner_name=pipeType,
+          raise_built=true
         }
   end
 end
@@ -290,7 +293,8 @@ function autodeconstruct.join_pipes(drillData, pipeType)
             name="entity-ghost",
             position = {x = pipeGhosts[1].position.x, y = pipeGhosts[2].position.y},
             force=drillData.force,
-            inner_name=pipeType
+            inner_name=pipeType,
+            raise_built=true
           }
     end
   end
