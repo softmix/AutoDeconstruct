@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.8
+Date: 2023-06-21
+  Bugfixes:
+    - Fixed compatibility with Contruction Continued for ghost pipe creation. (Thanks to ComradeEcho)
+  Changes:
+    - Updated translations from crowdin
+---------------------------------------------------------------------------------------------------
 Version: 0.3.7
 Date: 2023-02-20
   Bugfixes:
