@@ -123,7 +123,7 @@ local function find_drills(entity)
   for _, e in pairs(entities) do
     if (math.abs(e.position.x - position.x) < e.prototype.mining_drill_radius and
         math.abs(e.position.y - position.y) < e.prototype.mining_drill_radius) then
-      autodeconstruct.check_drill(e)
+      check_drill(e)
     end
   end
 end
@@ -154,7 +154,7 @@ function autodeconstruct.init_globals()
   -- Look for existing depleted miners based on current settings
   local drill_entities = find_all_entities('mining-drill')
   for _, drill_entity in pairs(drill_entities) do
-    autodeconstruct.check_drill(drill_entity)
+    check_drill(drill_entity)
   end
 end
 
@@ -167,7 +167,7 @@ function autodeconstruct.on_resource_depleted(event)
   find_drills(event.entity)
 end
 
-function autodeconstruct.check_drill(drill)
+local function check_drill(drill)
   if drill.mining_target ~= nil and drill.mining_target.valid then
     if drill.mining_target.amount > 0 then return end -- this should also filter out pumpjacks and infinite resources
   end
@@ -180,7 +180,7 @@ function autodeconstruct.check_drill(drill)
 
   if not has_resources(drill) then
     if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " found no compatible resources, deconstructing"}) end
-    autodeconstruct.order_deconstruction(drill)
+    order_deconstruction(drill)
   end
 end
 
@@ -189,10 +189,10 @@ function autodeconstruct.on_cancelled_deconstruction(event)
 
   if global.debug then msg_all({"autodeconstruct-debug", "on_cancelled_deconstruction", util.positiontostr(event.entity.position) .. " deconstruction timed out, checking again"}) end
   -- If another mod cancelled deconstruction of a miner, check this miner again
-  autodeconstruct.check_drill(event.entity)
+  check_drill(event.entity)
 end
 
-function autodeconstruct.deconstruct_target(drill)
+local function deconstruct_target(drill)
   local target = find_target(drill)
 
   if target ~= nil and target.minable and target.prototype.selectable_in_game then
@@ -230,7 +230,7 @@ function autodeconstruct.deconstruct_target(drill)
 end
 
 -- Build pipes from the given relative target to the center of the miner
-function autodeconstruct.build_pipe(drillData, pipeType, pipeTarget)
+local function build_pipe(drillData, pipeType, pipeTarget)
   --log("pipeTarget: "..util.positiontostr(pipeTarget).."; drillData.position: "..util.positiontostr(drillData.position))
 
   -- build in X first, then in Y
@@ -323,7 +323,7 @@ local function find_ghost_pipe(drillData, connecting_pipe_position)
   return false
 end
 
-function autodeconstruct.build_pipes(drill, pipeType)
+local function build_pipes(drill, pipeType)
   local drillData = {
     position  = {
       x = drill.position.x,
@@ -428,7 +428,7 @@ function autodeconstruct.build_pipes(drill, pipeType)
   -- Only build pipes if we found more than 1 connecting point
   if #pipes_to_build > 1 then
     for k, pipe_target in pairs(pipes_to_build) do
-      autodeconstruct.build_pipe(drillData, pipeType, pipe_target)
+      build_pipe(drillData, pipeType, pipe_target)
     end
       
     -- Check if we need to fill in a corner of an even-sided miner
@@ -443,7 +443,7 @@ function autodeconstruct.build_pipes(drill, pipeType)
   end
 end
 
-function autodeconstruct.order_deconstruction(drill)
+local function order_deconstruction(drill)
   if drill.to_be_deconstructed(drill.force) then
     debug_message_with_position(drill, "already marked, skipping")
     return
@@ -513,7 +513,7 @@ function autodeconstruct.order_deconstruction(drill)
   -- end guards
 
   if settings.global['autodeconstruct-remove-target'].value then
-    autodeconstruct.deconstruct_target(drill)
+    deconstruct_target(drill)
   end
 
   local ent_dat = {name=drill.name, position=drill.position}
@@ -523,7 +523,7 @@ function autodeconstruct.order_deconstruction(drill)
       -- Handle pipes
       if has_fluid and settings.global['autodeconstruct-build-pipes'].value then
         debug_message_with_position(drill, "trying to add pipe blueprints")
-        autodeconstruct.build_pipes(drill, pipeType)
+        build_pipes(drill, pipeType)
       end
       -- Check for inserters providing fuel to this miner
       if drill.valid and drill.burner then
