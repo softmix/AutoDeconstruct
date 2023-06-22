@@ -12,7 +12,7 @@ end
 
 local function on_nth_tick()
   local _, err = pcall(autodeconstruct.process_queue)
-  if err then msg_all({"autodeconstruct-err-generic", err})
+  if err then msg_all({"autodeconstruct-err-generic", err}) end
 end
 
 local function update_tick_event()

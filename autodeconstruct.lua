@@ -110,24 +110,6 @@ local function find_extracting(entity)
   return extracting
 end
 
-local function find_drills(entity)
-  local position = entity.position
-  local surface = entity.surface
-
-  local top_left = {x = position.x - global.max_radius, y = position.y - global.max_radius}
-  local bottom_right = {x = position.x + global.max_radius, y = position.y + global.max_radius}
-
-  local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
-  if global.debug then msg_all({"autodeconstruct-debug", "found " .. #entities  .. " drills"}) end
-
-  for _, e in pairs(entities) do
-    if (math.abs(e.position.x - position.x) < e.prototype.mining_drill_radius and
-        math.abs(e.position.y - position.y) < e.prototype.mining_drill_radius) then
-      check_drill(e)
-    end
-  end
-end
-
 local function debug_message_with_position(entity, msg)
   if not global.debug then return end
 
@@ -136,6 +118,28 @@ end
 
 function autodeconstruct.is_valid_pipe(name)
   return game.entity_prototypes[name] and game.entity_prototypes[name].type == "pipe"
+end
+
+local function queue_deconstruction(drill)
+  global.drill_queue = global.drill_queue or {}
+  table.insert(global.drill_queue, drill)
+end
+
+local function check_drill(drill)
+  if drill.mining_target ~= nil and drill.mining_target.valid then
+    if drill.mining_target.amount > 0 then return end -- this should also filter out pumpjacks and infinite resources
+  end
+
+  local mining_drill_radius = drill.prototype.mining_drill_radius
+  if mining_drill_radius == nil then return end
+  if mining_drill_radius > global.max_radius then
+    global.max_radius = mining_drill_radius
+  end
+
+  if not has_resources(drill) then
+    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " found no compatible resources, deconstructing"}) end
+    queue_deconstruction(drill)
+  end
 end
 
 function autodeconstruct.init_globals()
@@ -158,6 +162,24 @@ function autodeconstruct.init_globals()
   end
 end
 
+local function find_drills(entity)
+  local position = entity.position
+  local surface = entity.surface
+
+  local top_left = {x = position.x - global.max_radius, y = position.y - global.max_radius}
+  local bottom_right = {x = position.x + global.max_radius, y = position.y + global.max_radius}
+
+  local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type='mining-drill'}
+  if global.debug then msg_all({"autodeconstruct-debug", "found " .. #entities  .. " drills"}) end
+
+  for _, e in pairs(entities) do
+    if (math.abs(e.position.x - position.x) < e.prototype.mining_drill_radius and
+        math.abs(e.position.y - position.y) < e.prototype.mining_drill_radius) then
+      check_drill(e)
+    end
+  end
+end
+
 function autodeconstruct.on_resource_depleted(event)
   if event.entity.prototype.infinite_resource then
     if global.debug then msg_all({"autodeconstruct-debug", "on_resource_depleted", game.tick .. " amount " .. event.entity.amount .. " resource_category " .. event.entity.prototype.resource_category .. " infinite_resource " .. (event.entity.prototype.infinite_resource == true and "true" or "false" )}) end
@@ -165,23 +187,6 @@ function autodeconstruct.on_resource_depleted(event)
   end
 
   find_drills(event.entity)
-end
-
-local function check_drill(drill)
-  if drill.mining_target ~= nil and drill.mining_target.valid then
-    if drill.mining_target.amount > 0 then return end -- this should also filter out pumpjacks and infinite resources
-  end
-
-  local mining_drill_radius = drill.prototype.mining_drill_radius
-  if mining_drill_radius == nil then return end
-  if mining_drill_radius > global.max_radius then
-    global.max_radius = mining_drill_radius
-  end
-
-  if not has_resources(drill) then
-    if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " found no compatible resources, deconstructing"}) end
-    queue_deconstruction(drill)
-  end
 end
 
 function autodeconstruct.on_cancelled_deconstruction(event)
@@ -282,7 +287,7 @@ local function build_pipe(drillData, pipeType, pipeTarget)
 end
 
 -- Check the center four tiles of even-sided miners to see if caddy-corner pipes need to be joined
-function autodeconstruct.join_pipes(drillData, pipeType)
+local function join_pipes(drillData, pipeType)
   pipeGhosts = drillData.surface.find_entities_filtered{position = drillData.position, radius = 1.1, ghost_type = "pipe"}
   --log("> Found "..tostring(#pipeGhosts).." near center of even-sided drill at "..util.positiontostr(drillData.position))
   if #pipeGhosts == 2 then
@@ -377,7 +382,6 @@ local function build_pipes(drill, pipeType)
   end
   
   
-  
   -- Make a dict of which junctions are still empty to check for ghost pipes
   local connections_remaining = {}
   for k,v in pairs(junctions) do
@@ -435,7 +439,7 @@ local function build_pipes(drill, pipeType)
     -- Pipe construction box is odd-sided if the miner is even-sided
     if ((pipe_box.left_top.x - pipe_box.right_bottom.x) % 2 == 1) and
        ((pipe_box.left_top.y - pipe_box.right_bottom.y) % 2 == 1) then
-      autodeconstruct.join_pipes(drillData, pipeType)
+      join_pipes(drillData, pipeType)
     end
     debug_message_with_position(drill, "connected pipes to "..tostring(#pipes_to_build).." neighbors")
   else
@@ -540,20 +544,15 @@ local function order_deconstruction(drill)
   end
 end
 
-local function queue_deconstruction(drill)
-  global.drill_queue = global.drill_queue or {}
-  table.insert(global.drill_queue, drill)
-end
-
 function autodeconstruct.process_queue()
   if global.drill_queue and next(global.drill_queue) then
-    for i, drill in pairs(drill_queue) do
+    for i, drill in pairs(global.drill_queue) do
       if not drill.valid then
-        table.remove(drill_queue, i)
+        table.remove(global.drill_queue, i)
         break
-      elseif not drill.mining_progress > 0 then
+      elseif not (drill.mining_progress > 0) then
         order_deconstruction(drill)
-        table.remove(drill_queue, i)
+        table.remove(global.drill_queue, i)
         break
       end
     end
