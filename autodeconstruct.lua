@@ -180,7 +180,7 @@ local function check_drill(drill)
 
   if not has_resources(drill) then
     if global.debug then msg_all({"autodeconstruct-debug", util.positiontostr(drill.position) .. " found no compatible resources, deconstructing"}) end
-    order_deconstruction(drill)
+    queue_deconstruction(drill)
   end
 end
 
@@ -537,5 +537,25 @@ local function order_deconstruction(drill)
     end
   else
     msg_all({"autodeconstruct-err-specific", "drill.order_deconstruction", util.positiontostr(drill.position) .. " " .. drill.name .. " failed to order deconstruction" })
+  end
+end
+
+local function queue_deconstruction(drill)
+  global.drill_queue = global.drill_queue or {}
+  table.insert(global.drill_queue, drill)
+end
+
+function autodeconstruct.process_queue()
+  if global.drill_queue and next(global.drill_queue) then
+    for i, drill in pairs(drill_queue) do
+      if not drill.valid then
+        table.remove(drill_queue, i)
+        break
+      elseif not drill.mining_progress > 0 then
+        order_deconstruction(drill)
+        table.remove(drill_queue, i)
+        break
+      end
+    end
   end
 end

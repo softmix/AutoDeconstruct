@@ -9,6 +9,22 @@ function msg_all(message)
   end
 end
 
+
+local function on_nth_tick()
+  local _, err = pcall(autodeconstruct.process_queue)
+  if err then msg_all({"autodeconstruct-err-generic", err})
+end
+
+local function update_tick_event()
+  if global.drill_queue and next(global.drill_queue) then
+    -- Make sure event is enabled
+    script.on_nth_tick(17, on_nth_tick)
+  else
+    -- Make sure event is disabled
+    script.on_nth_tick(17, nil)
+  end
+end
+
 global.debug = false
 remote.add_interface("ad", {
   debug = function()
@@ -16,12 +32,14 @@ remote.add_interface("ad", {
   end,
   init = function()
     autodeconstruct.init_globals()
+    update_tick_event()
   end
 })
 
 script.on_init(function()
   local _, err = pcall(autodeconstruct.init_globals)
   if err then msg_all({"autodeconstruct-err-generic", err}) end
+  update_tick_event()
 end)
 
 script.on_configuration_changed(function()
@@ -34,6 +52,7 @@ script.on_configuration_changed(function()
   end
   local _, err = pcall(autodeconstruct.init_globals)
   if err then msg_all({"autodeconstruct-err-generic", err}) end
+  update_tick_event()
 end)
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
@@ -46,12 +65,14 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
     local _, err = pcall(autodeconstruct.init_globals)
     if err then msg_all({"autodeconstruct-err-generic", err}) end
   end
+  update_tick_event()
 end)
 
 script.on_event(defines.events.on_cancelled_deconstruction,
   function(event)
     local _, err = pcall(autodeconstruct.on_cancelled_deconstruction, event)
     if err then msg_all({"autodeconstruct-err-specific", "on_cancelled_deconstruction", err}) end
+    update_tick_event()
   end,
   {{filter="type", type="mining-drill"}}
 )
@@ -59,4 +80,5 @@ script.on_event(defines.events.on_cancelled_deconstruction,
 script.on_event(defines.events.on_resource_depleted, function(event)
   local _, err = pcall(autodeconstruct.on_resource_depleted, event)
   if err then msg_all({"autodeconstruct-err-specific", "on_resource_depleted", err}) end
+  update_tick_event()
 end)
