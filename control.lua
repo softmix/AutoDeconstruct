@@ -41,8 +41,10 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
     if not autodeconstruct.is_valid_pipe(settings.global[event.setting].value) then
       msg_all({"autodeconstruct-err-pipe-name", settings.global[event.setting].value})
     end
-  elseif (event.setting == "autodeconstruct-remove-fluid-drills" and
-      settings.global['autodeconstruct-remove-fluid-drills'].value == true) then
+  elseif ((event.setting == "autodeconstruct-remove-fluid-drills" and
+      settings.global['autodeconstruct-remove-fluid-drills'].value == true) or 
+      (event.setting == "autodeconstruct-remove-wired" and
+      settings.global['autodeconstruct-remove-wired'].value == true)) then
     local _, err = pcall(autodeconstruct.init_globals)
     if err then msg_all({"autodeconstruct-err-generic", err}) end
   end

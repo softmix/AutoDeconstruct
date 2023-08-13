@@ -15,6 +15,13 @@ data:extend({
   },
   {
     type = "bool-setting",
+    name = "autodeconstruct-remove-wired",
+    setting_type = "runtime-global",
+    default_value = false,
+    order = "ad-ab",
+  },
+  {
+    type = "bool-setting",
     name = "autodeconstruct-remove-fluid-drills",
     setting_type = "runtime-global",
     default_value = true,
