@@ -122,7 +122,8 @@ end
 
 local function queue_deconstruction(drill)
   global.drill_queue = global.drill_queue or {}
-  table.insert(global.drill_queue, drill)
+  local decon_tick = game.tick + 5
+  table.insert(global.drill_queue, {tick=decon_tick, drill=drill})
 end
 
 local function check_drill(drill)
@@ -546,12 +547,12 @@ end
 
 function autodeconstruct.process_queue()
   if global.drill_queue and next(global.drill_queue) then
-    for i, drill in pairs(global.drill_queue) do
-      if not drill.valid then
+    for i, entry in pairs(global.drill_queue) do
+      if not entry.drill or not entry.drill.valid then
         table.remove(global.drill_queue, i)
         break
-      elseif not (drill.mining_progress > 0) then
-        order_deconstruction(drill)
+      elseif game.tick >= entry.tick then
+        order_deconstruction(entry.drill)
         table.remove(global.drill_queue, i)
         break
       end

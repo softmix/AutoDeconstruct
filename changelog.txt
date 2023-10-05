@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.9
+Date: 2023-10-04
+  Bugfixes:
+    - Fixed that one ore was stuck in each miner when deconstructed, at least most of the time.
+  Changes:
+    - Updated translations from crowdin
+---------------------------------------------------------------------------------------------------
 Version: 0.3.8
 Date: 2023-06-21
   Bugfixes:
