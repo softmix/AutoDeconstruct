@@ -42,6 +42,10 @@ script.on_init(function()
   update_tick_event()
 end)
 
+script.on_load(function()
+  update_tick_event()
+end)
+
 script.on_configuration_changed(function()
   if not autodeconstruct.is_valid_pipe(settings.global["autodeconstruct-pipe-name"].value) then
     msg_all({"autodeconstruct-err-pipe-name", settings.global["autodeconstruct-pipe-name"].value})
