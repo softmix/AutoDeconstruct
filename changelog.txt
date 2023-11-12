@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.11
+Date: 2023-11-12
+  Bugfixes:
+    - Actually fix the multiplayer error this time. (Properly disable on_nth_tick event when queue is empty.)
+---------------------------------------------------------------------------------------------------
 Version: 0.3.10
 Date: 2023-11-10
   Bugfixes:
