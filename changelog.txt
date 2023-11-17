@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.12
+Date: 2023-11-16
+  Changes:
+    - Added setting to allow deconstructing miners with circuit wire connections (thanks to DHandspikerWade).
+    - Disabled automatic deconstruction behavior on sandbox surfaces created by Blueprint Sandboxes and The Blueprint Designer Lab mods.
+  Bugfixes:
+    - Fix error messages / not deconstructing miners on surfaces without a valid Space Exploration zone type.
+    - Fixed possible stale queue data when changing settings by deleting the queue and regenerating it.
+---------------------------------------------------------------------------------------------------
 Version: 0.3.11
 Date: 2023-11-12
   Bugfixes:
