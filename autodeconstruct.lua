@@ -485,10 +485,12 @@ local function order_deconstruction(drill)
     end
   end
 
-  if next(drill.circuit_connected_entities.red) ~= nil or next(drill.circuit_connected_entities.green) ~= nil then
-    debug_message_with_position(drill, "is hooked up to the circuit network, skipping")
+  if not settings.global['autodeconstruct-remove-wired'].value then
+    if next(drill.circuit_connected_entities.red) ~= nil or next(drill.circuit_connected_entities.green) ~= nil then
+      debug_message_with_position(drill, "is hooked up to the circuit network and wire deconstruction is not enabled, skipping")
 
-    return
+      return
+    end
   end
 
   if not drill.minable then
