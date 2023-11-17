@@ -1,6 +1,8 @@
 require "util"
 autodeconstruct = {}
 
+blacklist_surface_prefixes = {"BPL_TheLab", "bpsb%-lab"}
+
 local function map_to_string(t)
   local s = "{"
   for k,_ in pairs(t) do
@@ -155,8 +157,11 @@ function autodeconstruct.init_globals()
       end
     end
   end
+  
+  -- Clear existing deconstruction queue_deconstruction
+  global.drill_queue = {}
 
-  -- Look for existing depleted miners based on current settings
+  -- Look for existing depleted miners based on current settings, and re-add them to the queue
   local drill_entities = find_all_entities('mining-drill')
   for _, drill_entity in pairs(drill_entities) do
     check_drill(drill_entity)
@@ -453,6 +458,15 @@ local function order_deconstruction(drill)
     debug_message_with_position(drill, "already marked, skipping")
     return
   end
+  
+  local surface_name = drill.surface.name
+  for _,pfx in pairs(blacklist_surface_prefixes) do
+    if string.match(surface_name, pfx) then
+      debug_message_with_position(drill, "is on blacklisted surface "..surface_name..", skipping")
+      return
+    end
+  end
+  
   local has_fluid = false
   local pipeType = nil
   if drill.fluidbox and #drill.fluidbox > 0 then
@@ -468,7 +482,7 @@ local function order_deconstruction(drill)
     local is_space = false
     if game.active_mods["space-exploration"] then
       local se_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = drill.surface.index})
-      is_space = remote.call("space-exploration", "get_zone_is_space", {zone_index = se_zone.index})
+      is_space = ( se_zone and remote.call("space-exploration", "get_zone_is_space", {zone_index = se_zone.index}) ) or false
       if is_space then
         pipeType = settings.global['autodeconstruct-space-pipe-name'].value
       end
