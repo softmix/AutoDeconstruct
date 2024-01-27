@@ -545,6 +545,18 @@ local function order_deconstruction(drill)
       if has_fluid and settings.global['autodeconstruct-build-pipes'].value then
         debug_message_with_position(drill, "trying to add pipe blueprints")
         build_pipes(drill, pipeType)
+      else
+        local beacon = drill.surface.create_entity{
+          name="entity-ghost",
+          position = {x = drill.position.x, y = drill.position.y},
+          force=drill.force,
+          inner_name="beacon",
+          raise_built=true
+        }
+        local beacon_modules = {
+          ["speed-module-3"] = 2
+        }
+          beacon.item_requests = beacon_modules
       end
       -- Check for inserters providing fuel to this miner
       if drill.valid and drill.burner then
