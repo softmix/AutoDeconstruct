@@ -48,5 +48,13 @@ data:extend({
     default_value = "se-space-pipe",
     hidden = true,
     order = "ad-e",
+  },
+  {
+    type = "string-setting",
+    name = "autodeconstruct-blacklist",
+    setting_type = "runtime-global",
+    default_value = "",
+    allow_blank = true,
+    order = "ad-"
   }
 })

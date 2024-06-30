@@ -129,6 +129,8 @@ local function queue_deconstruction(drill)
 end
 
 local function check_drill(drill)
+  if global.blacklist[drill.name] then return end
+
   if drill.mining_target ~= nil and drill.mining_target.valid then
     if drill.mining_target.amount > 0 then return end -- this should also filter out pumpjacks and infinite resources
   end
@@ -146,14 +148,25 @@ local function check_drill(drill)
 end
 
 function autodeconstruct.init_globals()
-  -- Find largest-range miner in the game
+
+  -- Update the blacklist with the current setting value (whitespace, comma, and semicolon are valid separators)
+  global.blacklist = {}
+  for token in string.gmatch(settings.global["autodeconstruct-blacklist"].value,"([^%s,;]+)") do
+    if game.entity_prototypes[token] then
+      global.blacklist[token] = true
+    end
+  end
+  
+  -- Find largest-range miner in the game (only check drills not on the blacklist)
   global.max_radius = 0.99
   local drill_prototypes = game.get_filtered_entity_prototypes{{filter="type",type="mining-drill"}}
   for _, p in pairs(drill_prototypes) do
-    if p.mining_drill_radius then
-      if p.mining_drill_radius > global.max_radius then
-        global.max_radius = p.mining_drill_radius
-        if global.debug then msg_all({"autodeconstruct-debug", "init_globals", "global.max_radius updated to " .. global.max_radius}) end
+    if not global.blacklist[p.name] then
+      if p.mining_drill_radius then
+        if p.mining_drill_radius > global.max_radius then
+          global.max_radius = p.mining_drill_radius
+          if global.debug then msg_all({"autodeconstruct-debug", "init_globals", "global.max_radius updated to " .. global.max_radius}) end
+        end
       end
     end
   end
@@ -206,7 +219,7 @@ end
 local function deconstruct_target(drill)
   local target = find_target(drill)
 
-  if target ~= nil and target.minable and target.prototype.selectable_in_game then
+  if target ~= nil and target.minable and target.prototype.selectable_in_game and not global.blacklist[target.name] then
     if target.type == "logistic-container" or target.type == "container" then
       local targeting = find_targeting(target, {'mining-drill', 'inserter'})
 

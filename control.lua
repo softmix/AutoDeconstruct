@@ -50,6 +50,7 @@ script.on_load(function()
 end)
 
 script.on_configuration_changed(function()
+  -- Check the pipe settings for valid entity prototypes
   if not autodeconstruct.is_valid_pipe(settings.global["autodeconstruct-pipe-name"].value) then
     msg_all({"autodeconstruct-err-pipe-name", settings.global["autodeconstruct-pipe-name"].value})
   end
@@ -68,7 +69,8 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
       msg_all({"autodeconstruct-err-pipe-name", settings.global[event.setting].value})
     end
   elseif (event.setting == "autodeconstruct-remove-fluid-drills" or 
-          event.setting == "autodeconstruct-remove-wired") then
+          event.setting == "autodeconstruct-remove-wired" or
+          event.setting == "autodeconstruct-blacklist") then
     local _, err = pcall(autodeconstruct.init_globals)
     if err then msg_all({"autodeconstruct-err-generic", err}) end
   end
@@ -89,3 +91,20 @@ script.on_event(defines.events.on_resource_depleted, function(event)
   if err then msg_all({"autodeconstruct-err-specific", "on_resource_depleted", err}) end
   update_tick_event()
 end)
+
+------------------------------------------------------------------------------------
+--                    FIND LOCAL VARIABLES THAT ARE USED GLOBALLY                 --
+--                              (Thanks to eradicator!)                           --
+------------------------------------------------------------------------------------
+setmetatable(_ENV,{
+  __newindex=function (self,key,value) --locked_global_write
+    error('\n\n[ER Global Lock] Forbidden global *write*:\n'
+      .. serpent.line{key=key or '<nil>',value=value or '<nil>'}..'\n')
+    end,
+  __index   =function (self,key) --locked_global_read
+    error('\n\n[ER Global Lock] Forbidden global *read*:\n'
+      .. serpent.line{key=key or '<nil>'}..'\n')
+    end ,
+  })
+
+if script.active_mods["gvv"] then require("__gvv__.gvv")() end
