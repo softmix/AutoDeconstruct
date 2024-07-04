@@ -307,7 +307,7 @@ end
 
 -- Check the center four tiles of even-sided miners to see if caddy-corner pipes need to be joined
 local function join_pipes(drillData, pipeType)
-  pipeGhosts = drillData.surface.find_entities_filtered{position = drillData.position, radius = 1.1, ghost_type = "pipe"}
+  local pipeGhosts = drillData.surface.find_entities_filtered{position = drillData.position, radius = 1.1, ghost_type = "pipe"}
   --log("> Found "..tostring(#pipeGhosts).." near center of even-sided drill at "..util.positiontostr(drillData.position))
   if #pipeGhosts == 2 then
     if pipeGhosts[1].position.x ~= pipeGhosts[2].position.x and pipeGhosts[1].position.y ~= pipeGhosts[2].position.y then
