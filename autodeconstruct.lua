@@ -62,7 +62,7 @@ local function find_target(entity)
     local entities = entity.surface.find_entities_filtered{position=entity.drop_position, limit=1}  -- works when target is a belt
     if #entities > 0 then
       if global.debug then msg_all({"autodeconstruct-debug", "found " .. entities[1].name .. " at " .. util.positiontostr(entities[1].position)}) end
-      game.print("found target using position: "..entities[1].name)
+      --game.print("found target using position: "..entities[1].name)
       return entities[1]
     end
   end
@@ -305,9 +305,11 @@ local function queue_deconstruction(drill)
   local timeout_tick = decon_tick + 1800  -- wait at most 30 seconds for items to clear out
   local target = find_target(drill)
   local target_line = find_target_line(drill, target)
-  if target_line then target = nil end  -- Don't look for chest stuff if we have a transport line
+  if target_line then
+    target = nil  -- Don't look for chest stuff if we have a transport line
+  end
   local lp = nil
-  if target and target.type == "container" then
+  if target and target.type == "logistic-container" then
     lp = target.get_logistic_point()[1]
   end
   if target and not lp and #find_extracting(target) == 0 then
@@ -955,7 +957,7 @@ function autodeconstruct.process_queue()
         
       elseif game.tick >= entry.timeout then
         -- When timeout occurs, deconstruct everything
-        deconstruct_now = true
+        deconstruct_drill = true
         
       elseif game.tick >= entry.tick then
         -- Check conditions to see if we can deconstruct early
