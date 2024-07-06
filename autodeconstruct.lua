@@ -210,6 +210,35 @@ function autodeconstruct.on_cancelled_deconstruction(event)
   check_drill(event.entity)
 end
 
+local function deconstruct_beacons(drill)
+  local beacons = drill.get_beacons()
+  if beacons == nil then return end   -- Drills that don't accept beacons return nil intead of empty list
+  local beacon_busy = false
+  for _,beacon in pairs(drill.get_beacons()) do
+    if not beacon.to_be_deconstructed() and not global.blacklist[beacon.name] then
+      -- Receiving entities still show up if they are marked for deconstruction, so we have to check them all
+      for _,receiver in pairs(beacon.get_beacon_effect_receivers()) do
+        if receiver ~= drill then
+          if not receiver.to_be_deconstructed() then
+            beacon_busy = true
+            break
+          end
+        end
+      end
+      if not beacon_busy then
+        local ent_dat = {name=beacon.name, position=beacon.position}
+        if beacon.order_deconstruction(beacon.force) then
+          if beacon and beacon.valid then
+            debug_message_with_position(beacon, "marked for deconstruction")
+          else
+            debug_message_with_position(ent_dat, "instantly deconstructed")
+          end
+        end
+      end
+    end
+  end
+end
+
 local function deconstruct_target(drill)
   local target = find_target(drill)
 
@@ -542,6 +571,10 @@ local function order_deconstruction(drill)
 
   if settings.global['autodeconstruct-remove-target'].value then
     deconstruct_target(drill)
+  end
+  
+  if settings.global['autodeconstruct-remove-beacons'].value then
+    deconstruct_beacons(drill)
   end
 
   local ent_dat = {name=drill.name, position=drill.position}
