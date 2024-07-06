@@ -1044,7 +1044,7 @@ function autodeconstruct.process_queue()
         else
           -- temporary, do each belt just when it's empty
           for k,belt in pairs(entry.belt_list) do
-            if is_belt_empty(belt) and #get_belt_inputs(belt) == 0 then
+            if #get_belt_inputs(belt) == 0 and is_belt_empty(belt) then
               -- Deconstruct this belt that has no inputs and no contents
               belt.order_deconstruction(belt.force)
               table.remove(global.drill_queue[i].belt_list, k)
