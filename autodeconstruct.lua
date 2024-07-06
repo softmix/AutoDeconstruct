@@ -2,6 +2,8 @@ require "util"
 autodeconstruct = {}
 
 blacklist_surface_prefixes = {"BPL_TheLab", "bpsb%-lab"}
+belt_type_check = {["transport-belt"]=true, ["underground-belt"]=true, ["splitter"]=true}
+belt_types = {"transport-belt","underground-belt","splitter"}
 
 local function map_to_string(t)
   local s = "{"
@@ -51,17 +53,198 @@ local function find_all_entities(entity_type)
   return entities
 end
 
+-- Find the target entity the miner is dropping in, if any
 local function find_target(entity)
-  if entity.drop_target then
+  if entity.drop_target then  -- works when target is a chest
     if global.debug then msg_all({"autodeconstruct-debug", "found " .. entity.drop_target.name .. " at " .. util.positiontostr(entity.drop_target.position)}) end
     return entity.drop_target
   else
-    local entities = entity.surface.find_entities_filtered{position=entity.drop_position, limit=1}
+    local entities = entity.surface.find_entities_filtered{position=entity.drop_position, limit=1}  -- works when target is a belt
     if #entities > 0 then
       if global.debug then msg_all({"autodeconstruct-debug", "found " .. entities[1].name .. " at " .. util.positiontostr(entities[1].position)}) end
+      game.print("found target using position: "..entities[1].name)
       return entities[1]
     end
   end
+end
+
+
+local function find_target_line(drill, target)
+  if not target or not belt_type_check[target.type] then
+    return
+  end
+  
+  -- Figure out all the cases for where the miner can drop the item on the belt.
+  -- If drop_pos is at exactly 0.5, it defaults to the right line
+  local belt_pos = target.position
+  local drop_pos = drill.drop_position
+  local belt_dir = target.direction
+  
+  local target_line_index = 0
+  
+  if target.type == "transport-belt" and target.belt_shape == "left" then
+    -- Left turn belt, can only ever deposit on the right line (assuming miner drops close to itself)
+    target_line_index = defines.transport_line.right_line
+      
+  elseif target.type == "transport-belt" and target.belt_shape == "right" then
+    -- Right turn belt, can only ever deposit on the left line (assuming miner drops close to itself)
+    target_line_index = defines.transport_line.left_line
+    
+  elseif target.type == "transport-belt" or target.type == "underground-belt" then
+    -- Straight belt or underground
+    if belt_dir == defines.direction.north then
+      if drop_pos.x < belt_pos.x then
+        target_line_index = defines.transport_line.left_line
+      else
+        target_line_index = defines.transport_line.right_line
+      end
+    elseif belt_dir == defines.direction.south then
+      if drop_pos.x > belt_pos.x then
+        target_line_index = defines.transport_line.left_line
+      else
+        target_line_index = defines.transport_line.right_line
+      end
+    elseif belt_dir == defines.direction.east then
+      if drop_pos.y  < belt_pos.y then
+        target_line_index = defines.transport_line.left_line
+      else
+        target_line_index = defines.transport_line.right_line
+      end
+    elseif belt_dir == defines.direction.west then
+      if drop_pos.y > belt_pos.y then
+        target_line_index = defines.transport_line.left_line
+      else
+        target_line_index = defines.transport_line.right_line
+      end
+    end
+  elseif target.type == "splitter" then
+    -- Splitter has 8 different lines
+    -- "right_line" and "left_line" refer to the leftmost input belt
+    -- "secondary_*" refer to the rightmost input belt
+    -- "*_split_*" refer to the output belts
+    -- When dropping from the side or the front, items only go to the output belts
+    -- When dropping from the back, items go to the input belts
+    
+    -- When drop-pos is at 0.5 lengthwise, defaults to input belts
+    -- Divide area into 8 zones for each of the 4 cardinal directions
+    
+    
+    if belt_dir == defines.direction.north then
+      -- when facing north, outputs are negative y and left lane is negative x
+      -- Check if input or output
+      if drop_pos.y < belt_pos.y then
+        -- Use output belts
+        if drop_pos.x < belt_pos.x-0.5 then
+          target_line_index = defines.transport_line.left_split_line
+        elseif drop_pos.x < belt_pos.x then
+          target_line_index = defines.transport_line.right_split_line
+        elseif drop_pos.x < belt_pos.x+0.5 then
+          target_line_index = defines.transport_line.secondary_left_split_line
+        else
+          target_line_index = defines.transport_line.secondary_right_split_line
+        end
+      else
+        -- Use input belts
+        if drop_pos.x < belt_pos.x-0.5 then
+          target_line_index = defines.transport_line.left_line
+        elseif drop_pos.x < belt_pos.x then
+          target_line_index = defines.transport_line.right_line
+        elseif drop_pos.x < belt_pos.x+0.5 then
+          target_line_index = defines.transport_line.secondary_left_line
+        else
+          target_line_index = defines.transport_line.secondary_right_line
+        end
+      end
+    
+    elseif belt_dir == defines.direction.south then
+      -- when facing south, outputs are positive y and left lane is positive x
+      -- Check if input or output
+      if drop_pos.y > belt_pos.y then
+        -- Use output belts
+        if drop_pos.x > belt_pos.x+0.5 then
+          target_line_index = defines.transport_line.left_split_line
+        elseif drop_pos.x > belt_pos.x then
+          target_line_index = defines.transport_line.right_split_line
+        elseif drop_pos.x > belt_pos.x-0.5 then
+          target_line_index = defines.transport_line.secondary_left_split_line
+        else
+          target_line_index = defines.transport_line.secondary_right_split_line
+        end
+      else
+        -- Use input belts
+        if drop_pos.x > belt_pos.x+0.5 then
+          target_line_index = defines.transport_line.left_line
+        elseif drop_pos.x > belt_pos.x then
+          target_line_index = defines.transport_line.right_line
+        elseif drop_pos.x > belt_pos.x-0.5 then
+          target_line_index = defines.transport_line.secondary_left_line
+        else
+          target_line_index = defines.transport_line.secondary_right_line
+        end
+      end
+    
+    elseif belt_dir == defines.direction.east then
+      -- when facing east, outputs are positive x and left lane is negative y
+      -- Check if input or output
+      if drop_pos.x > belt_pos.x then
+        -- Use output belts
+        if drop_pos.y < belt_pos.y-0.5 then
+          target_line_index = defines.transport_line.left_split_line
+        elseif drop_pos.y < belt_pos.y then
+          target_line_index = defines.transport_line.right_split_line
+        elseif drop_pos.y < belt_pos.y+0.5 then
+          target_line_index = defines.transport_line.secondary_left_split_line
+        else
+          target_line_index = defines.transport_line.secondary_right_split_line
+        end
+      else
+        -- Use input belts
+        if drop_pos.y < belt_pos.y-0.5 then
+          target_line_index = defines.transport_line.left_line
+        elseif drop_pos.y < belt_pos.y then
+          target_line_index = defines.transport_line.right_line
+        elseif drop_pos.y < belt_pos.y+0.5 then
+          target_line_index = defines.transport_line.secondary_left_line
+        else
+          target_line_index = defines.transport_line.secondary_right_line
+        end
+      end
+    
+    elseif belt_dir == defines.direction.west then
+      -- when facing west, outputs are negative x and left lane is positive y
+      -- Check if input or output
+      if drop_pos.x < belt_pos.x then
+        -- Use output belts
+        if drop_pos.y > belt_pos.y+0.5 then
+          target_line_index = defines.transport_line.left_split_line
+        elseif drop_pos.y > belt_pos.y then
+          target_line_index = defines.transport_line.right_split_line
+        elseif drop_pos.y > belt_pos.y-0.5 then
+          target_line_index = defines.transport_line.secondary_left_split_line
+        else
+          target_line_index = defines.transport_line.secondary_right_split_line
+        end
+      else
+        -- Use input belts
+        if drop_pos.y > belt_pos.y+0.5 then
+          target_line_index = defines.transport_line.left_line
+        elseif drop_pos.y > belt_pos.y then
+          target_line_index = defines.transport_line.right_line
+        elseif drop_pos.y > belt_pos.y-0.5 then
+          target_line_index = defines.transport_line.secondary_left_line
+        else
+          target_line_index = defines.transport_line.secondary_right_line
+        end
+      end
+    
+    end
+  
+  end
+  -- Return the selected transport line reference
+  if target_line_index > 0 then
+    return target.get_transport_line(target_line_index)
+  end
+
 end
 
 local function find_targeting(entity, types)
@@ -118,8 +301,19 @@ end
 
 local function queue_deconstruction(drill)
   global.drill_queue = global.drill_queue or {}
-  local decon_tick = game.tick + 5
-  table.insert(global.drill_queue, {tick=decon_tick, drill=drill})
+  local decon_tick = game.tick + 30  -- by default, wait just long enough to eject the last item
+  local timeout_tick = decon_tick + 1800  -- wait at most 30 seconds for items to clear out
+  local target = find_target(drill)
+  local target_line = find_target_line(drill, target)
+  if target_line then target = nil end  -- Don't look for chest stuff if we have a transport line
+  local lp = nil
+  if target and target.type == "container" then
+    lp = target.get_logistic_point()[1]
+  end
+  if target and not lp and #find_extracting(target) == 0 then
+    target = nil  -- No inserters removing from this chest and no logistics, so no point in waiting to deconstruct
+  end
+  table.insert(global.drill_queue, {tick=decon_tick, timeout=timeout_tick, drill=drill, target=target, target_lp=lp, target_line=target_line})
 end
 
 local function check_drill(drill)
@@ -243,8 +437,7 @@ end
 
 -- Returns true if the belt is safe to deconstruct and the only targeter (if any) is the to-be-deconstructed drill
 local function check_is_belt_deconstructable(target, drill)
-  if target ~= nil and target.minable and target.prototype.selectable_in_game and not global.blacklist[target.name] and
-     (target.type == "transport-belt" or target.type == "underground-belt" or target.type == "splitter") then
+  if target ~= nil and target.minable and target.prototype.selectable_in_game and not global.blacklist[target.name] and belt_type_check[target.type] then
     -- This belt is safe to deconstruct if necessary
     local targeting = find_targeting(target, {'mining-drill', 'inserter'})
     
@@ -749,17 +942,44 @@ local function order_deconstruction(drill)
   end
 end
 
+-- Queue contents:
+-- Drill: {tick=decon_tick, timeout=timeout_tick, drill=drill, target=target, target_lp = lp, target_line = target_line}
 function autodeconstruct.process_queue()
   if global.drill_queue and next(global.drill_queue) then
     for i, entry in pairs(global.drill_queue) do
+      local deconstruct_drill = false
+      
       if not entry.drill or not entry.drill.valid then
+        -- no valid drill or belts to deconstruct, purge from queue and check a different entry
         table.remove(global.drill_queue, i)
-        break
+        
+      elseif game.tick >= entry.timeout then
+        -- When timeout occurs, deconstruct everything
+        deconstruct_now = true
+        
       elseif game.tick >= entry.tick then
+        -- Check conditions to see if we can deconstruct early
+        if entry.target then
+          if entry.target.get_inventory(defines.inventory.chest).is_empty() then
+            deconstruct_drill = true  -- chest is empty
+          elseif entry.lp and table_size(entry.lp.targeted_items_pickup)==0 then
+            deconstruct_drill = true  -- no robots coming to pick up
+          end
+        elseif entry.target_line then
+          if #entry.target_line == 0 then
+            deconstruct_drill = true  -- belt transport line is empty
+          end
+        else
+          deconstruct_drill = true -- no output chest or belt needs to be checked, deconstruct immediately
+        end
+      end
+      
+      if deconstruct_drill then
         order_deconstruction(entry.drill)
         table.remove(global.drill_queue, i)
         break
       end
+    
     end
   end
 end
