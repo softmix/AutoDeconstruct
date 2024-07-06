@@ -43,12 +43,8 @@ local function find_all_entities(entity_type)
   local entities = {}
   for _, surface in pairs(game.surfaces) do
     if surface and surface.valid then
-      for chunk in surface.get_chunks() do
-        local chunk_area = {lefttop = {x = chunk.x*32, y = chunk.y*32}, rightbottom = {x = chunk.x*32+32, y = chunk.y*32+32}}
-        local chunk_entities = surface.find_entities_filtered({area = chunk_area, type = entity_type})
-        for i = 1, #chunk_entities do
-          entities[#entities + 1] = chunk_entities[i]
-        end
+      for _,entity in pairs(surface.find_entities_filtered{type = entity_type}) do
+        table.insert(entities, entity)
       end
     end
   end
@@ -60,7 +56,7 @@ local function find_target(entity)
     if global.debug then msg_all({"autodeconstruct-debug", "found " .. entity.drop_target.name .. " at " .. util.positiontostr(entity.drop_target.position)}) end
     return entity.drop_target
   else
-    local entities = entity.surface.find_entities_filtered{position=entity.drop_position}
+    local entities = entity.surface.find_entities_filtered{position=entity.drop_position, limit=1}
     if #entities > 0 then
       if global.debug then msg_all({"autodeconstruct-debug", "found " .. entities[1].name .. " at " .. util.positiontostr(entities[1].position)}) end
       return entities[1]
@@ -78,10 +74,9 @@ local function find_targeting(entity, types)
   local surface = entity.surface
   local targeting = {}
 
-  local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type=types}
-  for i = 1, #entities do
-    if find_target(entities[i]) == entity then
-      targeting[#targeting + 1] = entities[i]
+  for _, e in pairs(surface.find_entities_filtered{area={top_left, bottom_right}, type=types}) do
+    if find_target(e) == entity then
+      table.insert(targeting, e)
     end
   end
 
@@ -100,10 +95,9 @@ local function find_extracting(entity)
   local surface = entity.surface
   local extracting = {}
 
-  local entities = surface.find_entities_filtered{area={top_left, bottom_right}, type="inserter"}
-  for i = 1, #entities do
-    if entities[i].pickup_target == entity then
-      extracting[#extracting + 1] = entities[i]
+  for _, e in pairs(surface.find_entities_filtered{area={top_left, bottom_right}, type="inserter"}) do
+    if e.pickup_target == entity then
+      table.insert(extracting, e)
     end
   end
 
@@ -226,7 +220,8 @@ local function deconstruct_target(drill)
       if targeting ~= nil then
         local chest_is_idle = true
         for i = 1, #targeting do
-          if not targeting[i].to_be_deconstructed(targeting[i].force) and targeting[i] ~= drill then
+        for _, e in pairs(targeting) do
+          if not e.to_be_deconstructed(e.force) and e ~= drill then
             chest_is_idle = false
             break
           end
@@ -234,7 +229,7 @@ local function deconstruct_target(drill)
 
         if chest_is_idle then
           -- we are the only one targeting
-          if target.to_be_deconstructed(target.force) then
+          if target.to_be_deconstructed() then
             target.cancel_deconstruction(target.force)
           end
           local ent_dat = {name=target.name, position=target.position}
