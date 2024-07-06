@@ -338,20 +338,19 @@ local function deconstruct_belts(drill)
       if sideload_safe then
         table.insert(upstream_belts_to_deconstruct, next_start_belt)
       end
-      -- keep looking downstream, even if it isn't sideload safe. If the next belt can be deconstructed then it doesn't matter.
-      for _,belt in pairs(next_start_outputs) do
-        table.insert(downstream_belts_to_check, belt)
-      end
       
       -- 3b. Follow the tree upstream, make a list of all the belts we travel and stop if we find another dropping entity
+      local belt_in_use = false
       while table_size(upstream_belts_to_check) > 0 do
         local next_belt = table.remove(upstream_belts_to_check)
         
         if not check_is_belt_deconstructable(next_belt, drill) then
-          -- Found a belt that has another target.  We can't remove any belts on this tree.
-          upstream_belts_to_deconstruct = {}
+          -- Found a belt that has another target.  We can't remove any belts up this tree, including this next_start_belt.
+          -- Also don't check any belts that are downstream of our current next_start_belt because something upstream is in use
+          belt_in_use = true
           break
         end
+        
         -- This belt does not have any other targets
         table.insert(upstream_belts_to_deconstruct, next_belt)
         upstream_belts_checked[next_belt.unit_number] = true
@@ -365,9 +364,19 @@ local function deconstruct_belts(drill)
         end
       end
       
-      -- 3c. Deconstruct all the upstream belts, including the one we started at if it's sideload-safe, since if we got here we did not find any other users attached
-      for _,belt in pairs(upstream_belts_to_deconstruct) do
-        belt.order_deconstruction(belt.force)
+      -- 3c. If no other users were found, deconstruct all the upstream belts, 
+      --   including the one we started at if it's sideload-safe, since if we got here we did not find any other users attached
+      if not belt_in_use then
+        for _,belt in pairs(upstream_belts_to_deconstruct) do
+          belt.order_deconstruction(belt.force)
+        end
+        upstream_belts_checked = {}
+        upstream_belts_to_deconstruct = {}
+      
+      -- Keep looking downstream, even if this particular isn't sideload safe. If the next belt can be deconstructed then it doesn't matter.
+        for _,belt in pairs(next_start_outputs) do
+          table.insert(downstream_belts_to_check, belt)
+        end
       end
     end
   end
