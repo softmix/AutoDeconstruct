@@ -219,7 +219,6 @@ local function deconstruct_target(drill)
 
       if targeting ~= nil then
         local chest_is_idle = true
-        for i = 1, #targeting do
         for _, e in pairs(targeting) do
           if not e.to_be_deconstructed(e.force) and e ~= drill then
             chest_is_idle = false
