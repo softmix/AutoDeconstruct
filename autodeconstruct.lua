@@ -210,6 +210,7 @@ function autodeconstruct.on_cancelled_deconstruction(event)
   check_drill(event.entity)
 end
 
+
 local function deconstruct_beacons(drill)
   local beacons = drill.get_beacons()
   if beacons == nil then return end   -- Drills that don't accept beacons return nil intead of empty list
@@ -238,6 +239,140 @@ local function deconstruct_beacons(drill)
     end
   end
 end
+
+
+-- Returns true if the belt is safe to deconstruct and the only targeter (if any) is the to-be-deconstructed drill
+local function check_is_belt_deconstructable(target, drill)
+  if target ~= nil and target.minable and target.prototype.selectable_in_game and not global.blacklist[target.name] and
+     (target.type == "transport-belt" or target.type == "underground-belt" or target.type == "splitter") then
+    -- This belt is safe to deconstruct if necessary
+    local targeting = find_targeting(target, {'mining-drill', 'inserter'})
+    
+    
+    if #targeting == 0 then
+      debug_message_with_position(target, "checked "..tostring(target.unit_number).." for targeting entities, found "..tostring(#targeting)..". Not targeted by anything.")
+      return true
+    else
+    
+      for _,targeter in pairs(targeting) do
+        if targeter ~= drill and not targeter.to_be_deconstructed() then
+          debug_message_with_position(target, "checked "..tostring(target.unit_number).." for targeting entities, found "..tostring(#targeting)..". At least one is new, so belt is targeted.")
+          return false  -- targeted by a different drill or inserter that is not marked for deconstruction, so it is in use
+        end
+      end
+      
+      debug_message_with_position(target, "checked "..tostring(target.unit_number).." for targeting entities, but the only one is the OLD miner.")
+      return true
+    end
+  else
+    return false
+  end
+end
+
+-- These functions return a list of belt neighbors that includes underground belt input/output, since they are in a different API structure.
+local function get_belt_outputs(belt)
+  local outputs = belt.belt_neighbours.outputs
+  if belt.type == "underground-belt" and belt.belt_to_ground_type == "input" then
+    table.insert(outputs,belt.neighbours)  -- insert the output undie for this input undie, since that is downstream
+  end
+  return outputs
+end
+local function get_belt_inputs(belt)
+  local inputs = belt.belt_neighbours.inputs
+  if belt.type == "underground-belt" and belt.belt_to_ground_type == "output" then
+    table.insert(inputs,belt.neighbours)  -- insert the input undie for this output undie, since that is upstream
+  end
+  return inputs
+end
+
+local function deconstruct_belts(drill)
+  
+  -- 1. Check if the target of this drill is a belt
+  local target = find_target(drill)
+  if not (target.type == "transport-belt" or target.type == "underground-belt" or target.type == "splitter") then
+    return
+  end
+  local starting_belt = target
+  
+  --    Start at the first belt and deconstruct and its upstream belts it if possible.
+  --    Then check the belt downstream of that one in case it has another upstream path, and so on.
+  --    Luckily, once a belt is marked for deconstruction, it no longer appears in belt_neighbours for anything
+  
+  -- 3. Go to each downstream belt and see if everything upstream of it can be removed
+  local downstream_belts_to_check = {starting_belt}
+  while table_size(downstream_belts_to_check) > 0 do
+    local next_start_belt = table.remove(downstream_belts_to_check)
+    if check_is_belt_deconstructable(next_start_belt, drill) then
+      --game.print("checking upstream from belt "..tostring(next_start_belt.unit_number))
+      local upstream_belts_to_check = next_start_belt.belt_neighbours.inputs  -- List of belts upstream of the first safe belt
+      local upstream_belts_to_deconstruct = {}
+      local upstream_belts_checked = {}
+      upstream_belts_checked[next_start_belt.unit_number] = true
+      
+      -- 3a. Check if deconstructing this belt will interfere with sideloading downstream
+      --  v
+      -- >>>  bad to remove leftmost but okay to remove upper (input count = 2)
+      --
+      --  v
+      -- >>>  okay to remove any one belt  (input count = 3)
+      --  ^ 
+      --
+      -- >>>  okay to remove any one belt (input count = 1)
+      --
+      --  v
+      --  >>  okay to remove any one belt (input count = 1)
+      --
+      --  v
+      --  >>  bad to remove any belt (input count = 2)
+      --  ^
+      --
+      -- Conclusion: If input_count == 2, to be safe don't remove the last belt. It may be removed safely once more miners in the patch are exhausted.
+      local sideload_safe = true
+      local next_start_outputs = get_belt_outputs(next_start_belt)
+      for _,belt in pairs(next_start_outputs) do
+        if belt.type == "transport-belt" and #belt.belt_neighbours.inputs == 2 then
+          sideload_safe = false  -- one of the output belts from this is side-loaded and might reconnect incorrectly if this start_belt were removed
+          break
+        end
+      end
+      if sideload_safe then
+        table.insert(upstream_belts_to_deconstruct, next_start_belt)
+      end
+      -- keep looking downstream, even if it isn't sideload safe. If the next belt can be deconstructed then it doesn't matter.
+      for _,belt in pairs(next_start_outputs) do
+        table.insert(downstream_belts_to_check, belt)
+      end
+      
+      -- 3b. Follow the tree upstream, make a list of all the belts we travel and stop if we find another dropping entity
+      while table_size(upstream_belts_to_check) > 0 do
+        local next_belt = table.remove(upstream_belts_to_check)
+        
+        if not check_is_belt_deconstructable(next_belt, drill) then
+          -- Found a belt that has another target.  We can't remove any belts on this tree.
+          upstream_belts_to_deconstruct = {}
+          break
+        end
+        -- This belt does not have any other targets
+        table.insert(upstream_belts_to_deconstruct, next_belt)
+        upstream_belts_checked[next_belt.unit_number] = true
+      
+        -- Check if it has any upstream belts to keep traveling on
+        for _,belt in pairs(get_belt_inputs(next_belt)) do
+          -- This is a new one, add it to check in a future iteration
+          if not upstream_belts_checked[belt.unit_number] then
+            table.insert(upstream_belts_to_check, belt)
+          end
+        end
+      end
+      
+      -- 3c. Deconstruct all the upstream belts, including the one we started at if it's sideload-safe, since if we got here we did not find any other users attached
+      for _,belt in pairs(upstream_belts_to_deconstruct) do
+        belt.order_deconstruction(belt.force)
+      end
+    end
+  end
+end
+  
 
 local function deconstruct_target(drill)
   local target = find_target(drill)
@@ -577,6 +712,10 @@ local function order_deconstruction(drill)
     deconstruct_beacons(drill)
   end
 
+  if settings.global['autodeconstruct-remove-belts'].value then
+    deconstruct_belts(drill)
+  end
+  
   local ent_dat = {name=drill.name, position=drill.position}
   if drill.order_deconstruction(drill.force) then
     if drill and drill.valid then
