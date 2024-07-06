@@ -443,7 +443,6 @@ local function check_is_belt_deconstructable(target, drill)
     -- This belt is safe to deconstruct if necessary
     local targeting = find_targeting(target, {'mining-drill', 'inserter'})
     
-    
     if #targeting == 0 then
       debug_message_with_position(target, "checked "..tostring(target.unit_number).." for targeting entities, found "..tostring(#targeting)..". Not targeted by anything.")
       return true
@@ -465,22 +464,43 @@ local function check_is_belt_deconstructable(target, drill)
 end
 
 -- These functions return a list of belt neighbors that includes underground belt input/output, since they are in a different API structure.
-local function get_belt_outputs(belt)
-  local outputs = belt.belt_neighbours.outputs
+-- The exclude list is a map of unit_number->true that contains belts we have queued for deconstruction already, so ignore them as neighbors
+local function get_belt_outputs(belt, exclude)
+  local outputs = {}
+  for _,neighbor in pairs(belt.belt_neighbours.outputs) do
+    if not (exclude and exclude[neighbor.unit_number]) then
+      table.insert(outputs,neighbor)
+    end
+  end
   if belt.type == "underground-belt" and belt.belt_to_ground_type == "input" then
-    table.insert(outputs,belt.neighbours)  -- insert the output undie for this input undie, since that is downstream
+    local neighbor = belt.neighbours
+    if neighbor and not (exclude and exclude[neighbor.unit_number]) then
+      table.insert(outputs,neighbor)  -- insert the output undie for this input undie, since that is downstream
+    end
   end
   return outputs
 end
-local function get_belt_inputs(belt)
-  local inputs = belt.belt_neighbours.inputs
+local function get_belt_inputs(belt, exclude)
+  local inputs = {}
+  for _,neighbor in pairs(belt.belt_neighbours.inputs) do
+    if not (exclude and exclude[neighbor.unit_number]) then
+      table.insert(inputs,neighbor)
+    end
+  end
   if belt.type == "underground-belt" and belt.belt_to_ground_type == "output" then
-    table.insert(inputs,belt.neighbours)  -- insert the input undie for this output undie, since that is upstream
+    local neighbor = belt.neighbours
+    if neighbor and not (exclude and exclude[neighbor.unit_number]) then
+      table.insert(inputs,neighbor)  -- insert the input undie for this output undie, since that is upstream
+    end
   end
   return inputs
 end
 
 local function deconstruct_belts(drill)
+  
+  
+  local to_deconstruct_list = {}
+  local to_deconstruct_map = {}
   
   -- 1. Check if the target of this drill is a belt
   local target = find_target(drill)
@@ -499,7 +519,7 @@ local function deconstruct_belts(drill)
     local next_start_belt = table.remove(downstream_belts_to_check)
     if check_is_belt_deconstructable(next_start_belt, drill) then
       --game.print("checking upstream from belt "..tostring(next_start_belt.unit_number))
-      local upstream_belts_to_check = next_start_belt.belt_neighbours.inputs  -- List of belts upstream of the first safe belt
+      local upstream_belts_to_check = get_belt_inputs(next_start_belt, to_deconstruct_map)  -- List of belts upstream of the first safe belt
       local upstream_belts_to_deconstruct = {}
       local upstream_belts_checked = {}
       upstream_belts_checked[next_start_belt.unit_number] = true
@@ -523,7 +543,7 @@ local function deconstruct_belts(drill)
       --
       -- Conclusion: If input_count == 2, to be safe don't remove the last belt. It may be removed safely once more miners in the patch are exhausted.
       local sideload_safe = true
-      local next_start_outputs = get_belt_outputs(next_start_belt)
+      local next_start_outputs = get_belt_outputs(next_start_belt, to_deconstruct_map)
       for _,belt in pairs(next_start_outputs) do
         if belt.type == "transport-belt" and #belt.belt_neighbours.inputs == 2 then
           sideload_safe = false  -- one of the output belts from this is side-loaded and might reconnect incorrectly if this start_belt were removed
@@ -551,7 +571,7 @@ local function deconstruct_belts(drill)
         upstream_belts_checked[next_belt.unit_number] = true
       
         -- Check if it has any upstream belts to keep traveling on
-        for _,belt in pairs(get_belt_inputs(next_belt)) do
+        for _,belt in pairs(get_belt_inputs(next_belt, to_deconstruct_map)) do
           -- This is a new one, add it to check in a future iteration
           if not upstream_belts_checked[belt.unit_number] then
             table.insert(upstream_belts_to_check, belt)
@@ -563,7 +583,9 @@ local function deconstruct_belts(drill)
       --   including the one we started at if it's sideload-safe, since if we got here we did not find any other users attached
       if not belt_in_use then
         for _,belt in pairs(upstream_belts_to_deconstruct) do
-          belt.order_deconstruction(belt.force)
+          --belt.order_deconstruction(belt.force)
+          table.insert(to_deconstruct_list, belt)
+          to_deconstruct_map[belt.unit_number] = true
         end
         upstream_belts_checked = {}
         upstream_belts_to_deconstruct = {}
@@ -575,6 +597,20 @@ local function deconstruct_belts(drill)
       end
     end
   end
+  
+  -- After all that, we have a list of belts we "virtually deconstructed".
+  -- Add this to the global queue as an entry that gets checked.
+  -- The idea is that we only deconstruct belts before the timeout if they are empty and have no inputs.
+  -- If there are loops or items stuck behind underground belts, those will wait for the timeout.
+  -- Every time we successfully deconstruct an empty belt, extend the timeout a bit.
+  -- Is there any sorting we can do to make it easier to find the next one that will be empty?
+  table.insert(global.drill_queue, {tick=game.tick+30, timeout=game.tick+1830, belt_list = to_deconstruct_list})
+  
+  -- Temporary instant deconstruction
+  -- for _,belt in pairs(to_deconstruct_list) do
+    -- belt.order_deconstruction(belt.force)
+  -- end
+  
 end
   
 
@@ -944,44 +980,87 @@ local function order_deconstruction(drill)
   end
 end
 
+
+local function is_belt_empty(belt)
+  for i=1,belt.get_max_transport_line_index() do
+    if #belt.get_transport_line(i) > 0 then
+      return false
+    end
+  end
+  return true
+end
+
 -- Queue contents:
 -- Drill: {tick=decon_tick, timeout=timeout_tick, drill=drill, target=target, target_lp = lp, target_line = target_line}
 function autodeconstruct.process_queue()
   if global.drill_queue and next(global.drill_queue) then
     for i, entry in pairs(global.drill_queue) do
-      local deconstruct_drill = false
       
-      if not entry.drill or not entry.drill.valid then
-        -- no valid drill or belts to deconstruct, purge from queue and check a different entry
-        table.remove(global.drill_queue, i)
+      if entry.drill then
+        local deconstruct_drill = false
         
-      elseif game.tick >= entry.timeout then
-        -- When timeout occurs, deconstruct everything
-        deconstruct_drill = true
+        if not entry.drill.valid then
+          -- no valid drill or belts to deconstruct, purge from queue and check a different entry
+          table.remove(global.drill_queue, i)
+          break
+        elseif game.tick >= entry.timeout then
+          -- When timeout occurs, deconstruct everything
+          deconstruct_drill = true
+          
+        elseif game.tick >= entry.tick then
+          -- Check conditions to see if we can deconstruct early
+          if entry.target then
+            if entry.target.get_inventory(defines.inventory.chest).is_empty() then
+              deconstruct_drill = true  -- chest is empty
+            elseif entry.lp and table_size(entry.lp.targeted_items_pickup)==0 then
+              deconstruct_drill = true  -- no robots coming to pick up
+            end
+          elseif entry.target_line then
+            if #entry.target_line == 0 then
+              deconstruct_drill = true  -- belt transport line is empty
+            end
+          else
+            deconstruct_drill = true -- no output chest or belt needs to be checked, deconstruct immediately
+          end
+        end
         
-      elseif game.tick >= entry.tick then
-        -- Check conditions to see if we can deconstruct early
-        if entry.target then
-          if entry.target.get_inventory(defines.inventory.chest).is_empty() then
-            deconstruct_drill = true  -- chest is empty
-          elseif entry.lp and table_size(entry.lp.targeted_items_pickup)==0 then
-            deconstruct_drill = true  -- no robots coming to pick up
+        if deconstruct_drill then
+          order_deconstruction(entry.drill)
+          table.remove(global.drill_queue, i)
+          break
+        end
+      
+      elseif entry.belt_list then
+        -- Check the belt network for any that can be deconstructed
+        if game.tick >= entry.timeout then
+          -- When timeout hits, deconstruct everything at once
+          for _,belt in pairs(entry.belt_list) do
+            belt.order_deconstruction(belt.force)
           end
-        elseif entry.target_line then
-          if #entry.target_line == 0 then
-            deconstruct_drill = true  -- belt transport line is empty
-          end
+          -- Clear the queue entry
+          table.remove(global.drill_queue, i)
+          --game.print("timed out deconstructing belts")
+          break
         else
-          deconstruct_drill = true -- no output chest or belt needs to be checked, deconstruct immediately
+          -- temporary, do each belt just when it's empty
+          for k,belt in pairs(entry.belt_list) do
+            if is_belt_empty(belt) and #get_belt_inputs(belt) == 0 then
+              -- Deconstruct this belt that has no inputs and no contents
+              belt.order_deconstruction(belt.force)
+              table.remove(global.drill_queue[i].belt_list, k)
+              -- Wait at least 5 seconds after the last empty belt was deconstructed before timing out
+              global.drill_queue[i].timeout = math.max(global.drill_queue[i].timeout, game.tick + 300)
+              break
+            end
+          end
+          -- If we deconstructed every belt as it emptied, clear queue entry
+          if table_size(global.drill_queue[i].belt_list) == 0 then
+            table.remove(global.drill_queue, i)
+            --game.print("finished deconstructing empty belts")
+            break
+          end
         end
       end
-      
-      if deconstruct_drill then
-        order_deconstruction(entry.drill)
-        table.remove(global.drill_queue, i)
-        break
-      end
-    
     end
   end
 end
