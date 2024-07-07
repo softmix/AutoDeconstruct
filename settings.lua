@@ -24,7 +24,7 @@ data:extend({
     type = "bool-setting",
     name = "autodeconstruct-remove-belts",
     setting_type = "runtime-global",
-    default_value = true,
+    default_value = false,
     order = "ad-aa",
   },
   {
