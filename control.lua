@@ -10,6 +10,14 @@ function msg_all(message)
 end
 
 
+function debug_message_with_position(entity, msg)
+  if not global.debug then return end
+
+  msg_all({"autodeconstruct-debug", util.positiontostr(entity.position) .. " " .. entity.name  .. " " .. msg})
+end
+
+
+
 local function on_nth_tick()
   local _, err = pcall(autodeconstruct.process_queue)
   if err then msg_all({"autodeconstruct-err-generic", err}) end

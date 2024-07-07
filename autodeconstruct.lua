@@ -1,9 +1,8 @@
-require "util"
+beltutil = require("beltutil")
+pipeutil = require("pipeutil")
 autodeconstruct = {}
 
 blacklist_surface_prefixes = {"BPL_TheLab", "bpsb%-lab"}
-belt_type_check = {["transport-belt"]=true, ["underground-belt"]=true, ["splitter"]=true}
-belt_types = {"transport-belt","underground-belt","splitter"}
 
 local function map_to_string(t)
   local s = "{"
@@ -68,185 +67,6 @@ local function find_target(entity)
   end
 end
 
-
-local function find_target_line(drill, target)
-  if not target or not belt_type_check[target.type] then
-    return
-  end
-  
-  -- Figure out all the cases for where the miner can drop the item on the belt.
-  -- If drop_pos is at exactly 0.5, it defaults to the right line
-  local belt_pos = target.position
-  local drop_pos = drill.drop_position
-  local belt_dir = target.direction
-  
-  local target_line_index = 0
-  
-  if target.type == "transport-belt" and target.belt_shape == "left" then
-    -- Left turn belt, can only ever deposit on the right line (assuming miner drops close to itself)
-    target_line_index = defines.transport_line.right_line
-      
-  elseif target.type == "transport-belt" and target.belt_shape == "right" then
-    -- Right turn belt, can only ever deposit on the left line (assuming miner drops close to itself)
-    target_line_index = defines.transport_line.left_line
-    
-  elseif target.type == "transport-belt" or target.type == "underground-belt" then
-    -- Straight belt or underground
-    if belt_dir == defines.direction.north then
-      if drop_pos.x < belt_pos.x then
-        target_line_index = defines.transport_line.left_line
-      else
-        target_line_index = defines.transport_line.right_line
-      end
-    elseif belt_dir == defines.direction.south then
-      if drop_pos.x > belt_pos.x then
-        target_line_index = defines.transport_line.left_line
-      else
-        target_line_index = defines.transport_line.right_line
-      end
-    elseif belt_dir == defines.direction.east then
-      if drop_pos.y  < belt_pos.y then
-        target_line_index = defines.transport_line.left_line
-      else
-        target_line_index = defines.transport_line.right_line
-      end
-    elseif belt_dir == defines.direction.west then
-      if drop_pos.y > belt_pos.y then
-        target_line_index = defines.transport_line.left_line
-      else
-        target_line_index = defines.transport_line.right_line
-      end
-    end
-  elseif target.type == "splitter" then
-    -- Splitter has 8 different lines
-    -- "right_line" and "left_line" refer to the leftmost input belt
-    -- "secondary_*" refer to the rightmost input belt
-    -- "*_split_*" refer to the output belts
-    -- When dropping from the side or the front, items only go to the output belts
-    -- When dropping from the back, items go to the input belts
-    
-    -- When drop-pos is at 0.5 lengthwise, defaults to input belts
-    -- Divide area into 8 zones for each of the 4 cardinal directions
-    
-    
-    if belt_dir == defines.direction.north then
-      -- when facing north, outputs are negative y and left lane is negative x
-      -- Check if input or output
-      if drop_pos.y < belt_pos.y then
-        -- Use output belts
-        if drop_pos.x < belt_pos.x-0.5 then
-          target_line_index = defines.transport_line.left_split_line
-        elseif drop_pos.x < belt_pos.x then
-          target_line_index = defines.transport_line.right_split_line
-        elseif drop_pos.x < belt_pos.x+0.5 then
-          target_line_index = defines.transport_line.secondary_left_split_line
-        else
-          target_line_index = defines.transport_line.secondary_right_split_line
-        end
-      else
-        -- Use input belts
-        if drop_pos.x < belt_pos.x-0.5 then
-          target_line_index = defines.transport_line.left_line
-        elseif drop_pos.x < belt_pos.x then
-          target_line_index = defines.transport_line.right_line
-        elseif drop_pos.x < belt_pos.x+0.5 then
-          target_line_index = defines.transport_line.secondary_left_line
-        else
-          target_line_index = defines.transport_line.secondary_right_line
-        end
-      end
-    
-    elseif belt_dir == defines.direction.south then
-      -- when facing south, outputs are positive y and left lane is positive x
-      -- Check if input or output
-      if drop_pos.y > belt_pos.y then
-        -- Use output belts
-        if drop_pos.x > belt_pos.x+0.5 then
-          target_line_index = defines.transport_line.left_split_line
-        elseif drop_pos.x > belt_pos.x then
-          target_line_index = defines.transport_line.right_split_line
-        elseif drop_pos.x > belt_pos.x-0.5 then
-          target_line_index = defines.transport_line.secondary_left_split_line
-        else
-          target_line_index = defines.transport_line.secondary_right_split_line
-        end
-      else
-        -- Use input belts
-        if drop_pos.x > belt_pos.x+0.5 then
-          target_line_index = defines.transport_line.left_line
-        elseif drop_pos.x > belt_pos.x then
-          target_line_index = defines.transport_line.right_line
-        elseif drop_pos.x > belt_pos.x-0.5 then
-          target_line_index = defines.transport_line.secondary_left_line
-        else
-          target_line_index = defines.transport_line.secondary_right_line
-        end
-      end
-    
-    elseif belt_dir == defines.direction.east then
-      -- when facing east, outputs are positive x and left lane is negative y
-      -- Check if input or output
-      if drop_pos.x > belt_pos.x then
-        -- Use output belts
-        if drop_pos.y < belt_pos.y-0.5 then
-          target_line_index = defines.transport_line.left_split_line
-        elseif drop_pos.y < belt_pos.y then
-          target_line_index = defines.transport_line.right_split_line
-        elseif drop_pos.y < belt_pos.y+0.5 then
-          target_line_index = defines.transport_line.secondary_left_split_line
-        else
-          target_line_index = defines.transport_line.secondary_right_split_line
-        end
-      else
-        -- Use input belts
-        if drop_pos.y < belt_pos.y-0.5 then
-          target_line_index = defines.transport_line.left_line
-        elseif drop_pos.y < belt_pos.y then
-          target_line_index = defines.transport_line.right_line
-        elseif drop_pos.y < belt_pos.y+0.5 then
-          target_line_index = defines.transport_line.secondary_left_line
-        else
-          target_line_index = defines.transport_line.secondary_right_line
-        end
-      end
-    
-    elseif belt_dir == defines.direction.west then
-      -- when facing west, outputs are negative x and left lane is positive y
-      -- Check if input or output
-      if drop_pos.x < belt_pos.x then
-        -- Use output belts
-        if drop_pos.y > belt_pos.y+0.5 then
-          target_line_index = defines.transport_line.left_split_line
-        elseif drop_pos.y > belt_pos.y then
-          target_line_index = defines.transport_line.right_split_line
-        elseif drop_pos.y > belt_pos.y-0.5 then
-          target_line_index = defines.transport_line.secondary_left_split_line
-        else
-          target_line_index = defines.transport_line.secondary_right_split_line
-        end
-      else
-        -- Use input belts
-        if drop_pos.y > belt_pos.y+0.5 then
-          target_line_index = defines.transport_line.left_line
-        elseif drop_pos.y > belt_pos.y then
-          target_line_index = defines.transport_line.right_line
-        elseif drop_pos.y > belt_pos.y-0.5 then
-          target_line_index = defines.transport_line.secondary_left_line
-        else
-          target_line_index = defines.transport_line.secondary_right_line
-        end
-      end
-    
-    end
-  
-  end
-  -- Return the selected transport line reference
-  if target_line_index > 0 then
-    return target.get_transport_line(target_line_index)
-  end
-
-end
-
 local function find_targeting(entity, types)
   local range = global.max_radius
   local position = entity.position
@@ -289,12 +109,6 @@ local function find_extracting(entity)
   return extracting
 end
 
-local function debug_message_with_position(entity, msg)
-  if not global.debug then return end
-
-  msg_all({"autodeconstruct-debug", util.positiontostr(entity.position) .. " " .. entity.name  .. " " .. msg})
-end
-
 function autodeconstruct.is_valid_pipe(name)
   return game.entity_prototypes[name] and game.entity_prototypes[name].type == "pipe"
 end
@@ -304,7 +118,7 @@ local function queue_deconstruction(drill)
   local decon_tick = game.tick + 30  -- by default, wait just long enough to eject the last item
   local timeout_tick = decon_tick + 1800  -- wait at most 30 seconds for items to clear out
   local target = find_target(drill)
-  local target_line = find_target_line(drill, target)
+  local target_line = beltutil.find_target_line(drill, target)
   if target_line then
     target = nil  -- Don't look for chest stuff if we have a transport line
   end
@@ -439,7 +253,7 @@ end
 
 -- Returns true if the belt is safe to deconstruct and the only targeter (if any) is the to-be-deconstructed drill
 local function check_is_belt_deconstructable(target, drill)
-  if target ~= nil and target.minable and target.prototype.selectable_in_game and not global.blacklist[target.name] and belt_type_check[target.type] then
+  if target ~= nil and target.minable and target.prototype.selectable_in_game and not global.blacklist[target.name] and beltutil.belt_type_check[target.type] then
     -- This belt is safe to deconstruct if necessary
     local targeting = find_targeting(target, {'mining-drill', 'inserter'})
     
@@ -463,42 +277,8 @@ local function check_is_belt_deconstructable(target, drill)
   end
 end
 
--- These functions return a list of belt neighbors that includes underground belt input/output, since they are in a different API structure.
--- The exclude list is a map of unit_number->true that contains belts we have queued for deconstruction already, so ignore them as neighbors
-local function get_belt_outputs(belt, exclude)
-  local outputs = {}
-  for _,neighbor in pairs(belt.belt_neighbours.outputs) do
-    if not (exclude and exclude[neighbor.unit_number]) then
-      table.insert(outputs,neighbor)
-    end
-  end
-  if belt.type == "underground-belt" and belt.belt_to_ground_type == "input" then
-    local neighbor = belt.neighbours
-    if neighbor and not (exclude and exclude[neighbor.unit_number]) then
-      table.insert(outputs,neighbor)  -- insert the output undie for this input undie, since that is downstream
-    end
-  end
-  return outputs
-end
-local function get_belt_inputs(belt, exclude)
-  local inputs = {}
-  for _,neighbor in pairs(belt.belt_neighbours.inputs) do
-    if not (exclude and exclude[neighbor.unit_number]) then
-      table.insert(inputs,neighbor)
-    end
-  end
-  if belt.type == "underground-belt" and belt.belt_to_ground_type == "output" then
-    local neighbor = belt.neighbours
-    if neighbor and not (exclude and exclude[neighbor.unit_number]) then
-      table.insert(inputs,neighbor)  -- insert the input undie for this output undie, since that is upstream
-    end
-  end
-  return inputs
-end
 
 local function deconstruct_belts(drill)
-  
-  
   local to_deconstruct_list = {}
   local to_deconstruct_map = {}
   
@@ -519,7 +299,7 @@ local function deconstruct_belts(drill)
     local next_start_belt = table.remove(downstream_belts_to_check)
     if check_is_belt_deconstructable(next_start_belt, drill) then
       --game.print("checking upstream from belt "..tostring(next_start_belt.unit_number))
-      local upstream_belts_to_check = get_belt_inputs(next_start_belt, to_deconstruct_map)  -- List of belts upstream of the first safe belt
+      local upstream_belts_to_check = beltutil.get_belt_inputs(next_start_belt, to_deconstruct_map)  -- List of belts upstream of the first safe belt
       local upstream_belts_to_deconstruct = {}
       local upstream_belts_checked = {}
       upstream_belts_checked[next_start_belt.unit_number] = true
@@ -543,7 +323,7 @@ local function deconstruct_belts(drill)
       --
       -- Conclusion: If input_count == 2, to be safe don't remove the last belt. It may be removed safely once more miners in the patch are exhausted.
       local sideload_safe = true
-      local next_start_outputs = get_belt_outputs(next_start_belt, to_deconstruct_map)
+      local next_start_outputs = beltutil.get_belt_outputs(next_start_belt, to_deconstruct_map)
       for _,belt in pairs(next_start_outputs) do
         if belt.type == "transport-belt" and #belt.belt_neighbours.inputs == 2 then
           sideload_safe = false  -- one of the output belts from this is side-loaded and might reconnect incorrectly if this start_belt were removed
@@ -571,7 +351,7 @@ local function deconstruct_belts(drill)
         upstream_belts_checked[next_belt.unit_number] = true
       
         -- Check if it has any upstream belts to keep traveling on
-        for _,belt in pairs(get_belt_inputs(next_belt, to_deconstruct_map)) do
+        for _,belt in pairs(beltutil.get_belt_inputs(next_belt, to_deconstruct_map)) do
           -- This is a new one, add it to check in a future iteration
           if not upstream_belts_checked[belt.unit_number] then
             table.insert(upstream_belts_to_check, belt)
@@ -651,218 +431,6 @@ local function deconstruct_target(drill)
   end
 end
 
--- Build pipes from the given relative target to the center of the miner
-local function build_pipe(drillData, pipeType, pipeTarget)
-  --log("pipeTarget: "..util.positiontostr(pipeTarget).."; drillData.position: "..util.positiontostr(drillData.position))
-
-  -- build in X first, then in Y
-  local x = pipeTarget.x
-  local y = pipeTarget.y
-
-  -- Build connection point first
-  --log("> Building connector pipe at "..util.positiontostr({x=x,y=y}))
-  drillData.surface.create_entity{
-          name="entity-ghost",
-          position = {x = drillData.position.x + x, y = drillData.position.y + y},
-          force=drillData.force,
-          inner_name=pipeType,
-          raise_built=true
-        }
-
-  -- Build X pipes left/right toward center (stop short if center is off-grid)
-  while math.abs(x) >= 0.75 do
-    if x > 0 then
-      x = x - 1
-    elseif x < 0 then
-      x = x + 1
-    end
-    --log("building X pipe at relative position "..util.positiontostr({x=x,y=y}))
-    drillData.surface.create_entity{
-          name="entity-ghost",
-          position = {x = drillData.position.x + x, y = drillData.position.y + y},
-          force=drillData.force,
-          inner_name=pipeType,
-          raise_built=true
-        }
-  end
-  -- Build Y pipes up/down from where X left off (stop short if center is off-grid)
-  while math.abs(y) >= 0.75 do
-    if y > 0 then
-      y = y - 1
-    elseif y < 0 then
-      y = y + 1
-    end
-    --log("building Y pipe at relative position "..util.positiontostr({x=x,y=y}))
-    drillData.surface.create_entity{
-          name="entity-ghost",
-          position = {x = drillData.position.x + x, y = drillData.position.y + y},
-          force=drillData.force,
-          inner_name=pipeType,
-          raise_built=true
-        }
-  end
-end
-
--- Check the center four tiles of even-sided miners to see if caddy-corner pipes need to be joined
-local function join_pipes(drillData, pipeType)
-  local pipeGhosts = drillData.surface.find_entities_filtered{position = drillData.position, radius = 1.1, ghost_type = "pipe"}
-  --log("> Found "..tostring(#pipeGhosts).." near center of even-sided drill at "..util.positiontostr(drillData.position))
-  if #pipeGhosts == 2 then
-    if pipeGhosts[1].position.x ~= pipeGhosts[2].position.x and pipeGhosts[1].position.y ~= pipeGhosts[2].position.y then
-      -- Build a third pipe to connect these two on a diagonal
-      --log("Building Diagonal Connecting pipe at relative position " .. util.positiontostr({x=pipeGhosts[1].position.x - drillData.position.x,y=pipeGhosts[2].position.y - drillData.position.y}) )
-      drillData.surface.create_entity{
-            name="entity-ghost",
-            position = {x = pipeGhosts[1].position.x, y = pipeGhosts[2].position.y},
-            force=drillData.force,
-            inner_name=pipeType,
-            raise_built=true
-          }
-    end
-  end
-
-end
-
--- Round selection box to nearest integer coordinates
-local function snap_box_to_grid(box)
-  box.left_top.x = math.floor(box.left_top.x*2+0.5)/2
-  box.left_top.y = math.floor(box.left_top.y*2+0.5)/2
-  box.right_bottom.x = math.floor(box.right_bottom.x*2+0.5)/2
-  box.right_bottom.y = math.floor(box.right_bottom.y*2+0.5)/2
-  return box
-end
-
-
-local function find_ghost_pipe(drillData, connecting_pipe_position)
-  local found_pipe = drillData.surface.find_entities_filtered{ghost_type = "pipe", position = connecting_pipe_position}
-  if (found_pipe and next(found_pipe)) then
-    return true
-  end
-  local found_underground = drillData.surface.find_entities_filtered{ghost_type = "pipe-to-ground", position = connecting_pipe_position, direction = connecting_pipe_position.direction}
-  if (found_underground and next(found_underground)) then
-    return true
-  end
-  return false
-end
-
-local function build_pipes(drill, pipeType)
-  local drillData = {
-    position  = {
-      x = drill.position.x,
-      y = drill.position.y
-    },
-    direction = drill.direction,
-    force     = drill.force,
-    owner     = drill.last_user,
-    surface   = drill.surface
-  }
-
-  --log("Building pipes for drill: "..drill.name.." at "..util.positiontostr(drill.position))
-  
-  -- Find the points at the edge of the drill where the pipes actually meet
-  -- Connection position index is different from entity.direction
-  -- {0,2,4,6} ==> {1,2,3,4}
-  local conn_index = math.floor(drillData.direction/2)+1
-
-  -- Box with coordinates of entity grid boundary
-  local box = snap_box_to_grid(drill.selection_box)
-
-  -- Box with coordinates of pipes placed inside the entity boundary
-  local pipe_box = {left_top =     {x = box.left_top.x - drillData.position.x + 0.5,     y = box.left_top.y - drillData.position.y + 0.5},
-                    right_bottom = {x = box.right_bottom.x - drillData.position.x - 0.5, y = box.right_bottom.y - drillData.position.y - 0.5}}
-
-  --log("Selection box: "..serpent.line(box).."\nPipe box: "..serpent.line(pipe_box))
-  local junctions = {}
-  local pipe_offsets = {}
-  local connecting_pipe_positions = {}
-  for k, connection in pairs(drill.fluidbox.get_prototype(1).pipe_connections) do
-    local conn = connection.positions[conn_index]  -- offset from center of where mating pipe goes
-    junctions[k] = {x = util.clamp(conn.x + drillData.position.x, box.left_top.x, box.right_bottom.x),  -- world coordinate of edge where mating pipe meets entity (integer coordinate at tile boundary, integer+0.5 coordinate at centerline of pipe)
-                    y = util.clamp(conn.y + drillData.position.y, box.left_top.y, box.right_bottom.y)}
-    pipe_offsets[k] = {x = util.clamp(conn.x, pipe_box.left_top.x, pipe_box.right_bottom.x),      -- offset from center to where internal pipe goes
-                       y = util.clamp(conn.y, pipe_box.left_top.y, pipe_box.right_bottom.y)}
-    
-    -- prepare to look for ghost pipes (they don't have fluidboxes, have to search coordinates)
-    local underground_direction  -- If direction is undetermined, then it will search for all directions
-    if junctions[k].y == box.right_bottom.y then
-      underground_direction = defines.direction.north  -- connection is on south border, mating pipe faces north
-    elseif junctions[k].x == box.right_bottom.x then
-      underground_direction = defines.direction.west  -- connection is on east border, mating pipe faces west
-    elseif junctions[k].y == box.left_top.y then
-      underground_direction = defines.direction.south  -- connection is on north border, mating pipe faces south
-    elseif junctions[k].x == box.left_top.x then
-      underground_direction = defines.direction.east  -- connection is on west border, mating pipe faces east
-    end
-    connecting_pipe_positions[k] = {x = conn.x + drillData.position.x,    -- world coordinate of where the mating pipe for this fluidbox connection goes
-                                    y = conn.y + drillData.position.y,
-                                    direction = underground_direction}
-  end
-  
-  
-  -- Make a dict of which junctions are still empty to check for ghost pipes
-  local connections_remaining = {}
-  for k,v in pairs(junctions) do
-    connections_remaining[k] = true
-  end
-  
-  local pipes_to_build = {}
-  
-  -- Drills only have one fluidbox, get the first
-  local connected_fluidboxes = drill.fluidbox.get_connections(1)
-
-  if connected_fluidboxes then
-    for _,other_fluidbox in pairs(connected_fluidboxes) do
-      local other_box = snap_box_to_grid(other_fluidbox.owner.selection_box)
-
-      -- Look for any of our junctions that lines up on the target's boundary box
-      local this_pipe_built = false
-      for k, junc in pairs(junctions) do
-        if connections_remaining[k] then
-          if (junc.y == other_box.right_bottom.y and junc.x >= other_box.left_top.x and junc.x <= other_box.right_bottom.x) or -- match on north side
-             (junc.y == other_box.left_top.y and junc.x >= other_box.left_top.x and junc.x <= other_box.right_bottom.x) or     -- match on south side
-             (junc.x == other_box.right_bottom.x and junc.y >= other_box.left_top.y and junc.y <= other_box.right_bottom.y) or -- match on east side
-             (junc.x == other_box.left_top.x and junc.y >= other_box.left_top.y and junc.y <= other_box.right_bottom.y) then   -- match on west side
-
-            debug_message_with_position(drill,"found junction "..util.positiontostr(junc).." is adjacent to "..other_fluidbox.owner.name.." box "..string.gsub(serpent.line(other_box),"[\n ]",""))
-            table.insert(pipes_to_build, pipe_offsets[k])
-            this_pipe_built = true
-            connections_remaining[k] = nil
-          end
-        end
-      end
-      if not this_pipe_built then
-        debug_message_with_position(drill, "can't find fluid connectors pointing toward neighbor at "..util.positiontostr(other_fluidbox.owner.position))
-      end
-    end
-  end
-    
-  -- See if any of the remaining sides are adjacent to pipe ghosts
-  for k, t in pairs(connections_remaining) do
-    if find_ghost_pipe(drillData, connecting_pipe_positions[k]) then
-      debug_message_with_position(drill, "building pipe to ghost pipe at "..util.positiontostr(connecting_pipe_positions[k]))
-      table.insert(pipes_to_build, pipe_offsets[k])
-    else
-      debug_message_with_position(drill, "no ghost pipe found at "..util.positiontostr(connecting_pipe_positions[k]))
-    end
-  end
-  
-  -- Only build pipes if we found more than 1 connecting point
-  if #pipes_to_build > 1 then
-    for k, pipe_target in pairs(pipes_to_build) do
-      build_pipe(drillData, pipeType, pipe_target)
-    end
-      
-    -- Check if we need to fill in a corner of an even-sided miner
-    -- Pipe construction box is odd-sided if the miner is even-sided
-    if ((pipe_box.left_top.x - pipe_box.right_bottom.x) % 2 == 1) and
-       ((pipe_box.left_top.y - pipe_box.right_bottom.y) % 2 == 1) then
-      join_pipes(drillData, pipeType)
-    end
-    debug_message_with_position(drill, "connected pipes to "..tostring(#pipes_to_build).." neighbors")
-  else
-    debug_message_with_position(drill, "can't find fluid connectors pointing toward any neighbors")
-  end
-end
 
 local function order_deconstruction(drill)
   if drill.to_be_deconstructed(drill.force) then
@@ -963,7 +531,7 @@ local function order_deconstruction(drill)
       -- Handle pipes
       if has_fluid and settings.global['autodeconstruct-build-pipes'].value then
         debug_message_with_position(drill, "trying to add pipe blueprints")
-        build_pipes(drill, pipeType)
+        pipeutil.build_pipes(drill, pipeType)
       end
       -- Check for inserters providing fuel to this miner
       if drill.valid and drill.burner then
@@ -980,15 +548,6 @@ local function order_deconstruction(drill)
   end
 end
 
-
-local function is_belt_empty(belt)
-  for i=1,belt.get_max_transport_line_index() do
-    if #belt.get_transport_line(i) > 0 then
-      return false
-    end
-  end
-  return true
-end
 
 -- Queue contents:
 -- Drill: {tick=decon_tick, timeout=timeout_tick, drill=drill, target=target, target_lp = lp, target_line = target_line}
@@ -1035,18 +594,21 @@ function autodeconstruct.process_queue()
         if game.tick >= entry.timeout then
           -- When timeout hits, deconstruct everything at once
           for _,belt in pairs(entry.belt_list) do
-            belt.order_deconstruction(belt.force)
+            if belt and belt.valid then
+              belt.order_deconstruction(belt.force)
+            end
           end
           -- Clear the queue entry
           table.remove(global.drill_queue, i)
           --game.print("timed out deconstructing belts")
           break
         else
-          -- temporary, do each belt just when it's empty
           for k,belt in pairs(entry.belt_list) do
-            if #get_belt_inputs(belt) == 0 and is_belt_empty(belt) then
-              -- Deconstruct this belt that has no inputs and no contents
-              belt.order_deconstruction(belt.force)
+            if #beltutil.get_belt_inputs(belt) == 0 and beltutil.is_belt_empty(belt) then
+              -- Deconstruct this belt that has no inputs and no relevant contents
+              if belt and belt.valid then
+                belt.order_deconstruction(belt.force)
+              end
               table.remove(global.drill_queue[i].belt_list, k)
               -- Wait at least 5 seconds after the last empty belt was deconstructed before timing out
               global.drill_queue[i].timeout = math.max(global.drill_queue[i].timeout, game.tick + 300)
