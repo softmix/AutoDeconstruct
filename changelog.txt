@@ -1,6 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.4.0
+Date: 2024-07-07
+  Features:
+    - Added setting to also deconstruct unused beacons (enabled by default).
+    - Added setting to also deconstruct unused belts (DISabled by default).
+    - Belt deconstruction is greedy and will deconstruct belts up and downstream from the deconstructed drill if no item sources are found.
+    - Belt deconstruction tries to wait for the belts to naturally empty before deconstructing.  If items get stuck for more than 30 seconds, the belts will be deconstructed anyways.
+    - Belt deconstruction feature is *alpha* so make a backup before enabling the setting.  Please report any strange behavior or crashes!
+---------------------------------------------------------------------------------------------------
 Version: 0.3.16
 Date: 2024-07-04
+  Bugfixes:
     - Fixed error when pipe ghosts aren't built fast enough.
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.15
