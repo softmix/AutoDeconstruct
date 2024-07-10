@@ -1,6 +1,11 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.0
 Date: 2024-07-07
+  Bugfixes:
+    - Fixed errors when miners target assemblers and other non-chest entities.
+---------------------------------------------------------------------------------------------------
+Version: 0.4.0
+Date: 2024-07-07
   Features:
     - Added setting to also deconstruct unused beacons (enabled by default).
     - Added setting to also deconstruct unused belts (DISabled by default).

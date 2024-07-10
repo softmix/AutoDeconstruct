@@ -123,8 +123,12 @@ local function queue_deconstruction(drill)
     target = nil  -- Don't look for chest stuff if we have a transport line
   end
   local lp = nil
-  if target and target.type == "logistic-container" then
-    lp = target.get_logistic_point()[1]
+  if target then
+    if target.type == "logistic-container" then
+      lp = target.get_logistic_point()[1]  -- logistic container means keep target and store logistic point
+    elseif target.type ~= "container" then
+      target = nil  -- not logistic container and not container means don't keep target, it's something we can't deconstruct
+    end
   end
   if target and not lp and #find_extracting(target) == 0 then
     target = nil  -- No inserters removing from this chest and no logistics, so no point in waiting to deconstruct
@@ -284,7 +288,7 @@ local function deconstruct_belts(drill)
   
   -- 1. Check if the target of this drill is a belt
   local target = find_target(drill)
-  if not (target.type == "transport-belt" or target.type == "underground-belt" or target.type == "splitter") then
+  if not target or not target.valid or not (target.type == "transport-belt" or target.type == "underground-belt" or target.type == "splitter") then
     return
   end
   local starting_belt = target
@@ -568,8 +572,9 @@ function autodeconstruct.process_queue()
           
         elseif game.tick >= entry.tick then
           -- Check conditions to see if we can deconstruct early
-          if entry.target then
-            if entry.target.get_inventory(defines.inventory.chest).is_empty() then
+          if entry.target and entry.target.valid then
+            local inv = entry.target.get_inventory(defines.inventory.chest)
+            if not inv or inv.is_empty() then
               deconstruct_drill = true  -- chest is empty
             elseif entry.lp and table_size(entry.lp.targeted_items_pickup)==0 then
               deconstruct_drill = true  -- no robots coming to pick up
