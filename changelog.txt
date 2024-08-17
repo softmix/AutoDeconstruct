@@ -1,8 +1,13 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.4.0
-Date: 2024-07-07
+Version: 0.4.2
+Date: 2024-08-17
+  Changes:
+    - Updated translations from Crowdin.
+---------------------------------------------------------------------------------------------------
+Version: 0.4.1
+Date: 2024-07-09
   Bugfixes:
-    - Fixed errors when miners target assemblers and other non-chest entities.
+    - Fixed errors when drills point at assemblers and other non-chest entities.
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.0
 Date: 2024-07-07
