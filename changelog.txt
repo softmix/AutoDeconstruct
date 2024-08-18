@@ -3,6 +3,8 @@ Version: 0.4.3
 Date: 2024-08-17
   Changes:
     - Added minimum base version of 1.1.100 for API compatibility.
+  Bugfixes:
+    - Abort any ongoing belt deconstructions when belt setting is disabled.
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.2
 Date: 2024-08-17

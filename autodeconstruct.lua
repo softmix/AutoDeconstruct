@@ -595,36 +595,41 @@ function autodeconstruct.process_queue()
         end
       
       elseif entry.belt_list then
-        -- Check the belt network for any that can be deconstructed
-        if game.tick >= entry.timeout then
-          -- When timeout hits, deconstruct everything at once
-          for _,belt in pairs(entry.belt_list) do
-            if belt and belt.valid then
-              belt.order_deconstruction(belt.force)
-            end
-          end
-          -- Clear the queue entry
-          table.remove(global.drill_queue, i)
-          --game.print("timed out deconstructing belts")
-          break
+        if not settings.global['autodeconstruct-remove-belts'].value then
+          -- If belts are disabled, clear the queue of belts to remove.
+          entry.belt_list = nil
         else
-          for k,belt in pairs(entry.belt_list) do
-            if #beltutil.get_belt_inputs(belt) == 0 and beltutil.is_belt_empty(belt) then
-              -- Deconstruct this belt that has no inputs and no relevant contents
+          -- Check the belt network for any that can be deconstructed
+          if game.tick >= entry.timeout then
+            -- When timeout hits, deconstruct everything at once
+            for _,belt in pairs(entry.belt_list) do
               if belt and belt.valid then
                 belt.order_deconstruction(belt.force)
               end
-              table.remove(global.drill_queue[i].belt_list, k)
-              -- Wait at least 5 seconds after the last empty belt was deconstructed before timing out
-              global.drill_queue[i].timeout = math.max(global.drill_queue[i].timeout, game.tick + 300)
+            end
+            -- Clear the queue entry
+            table.remove(global.drill_queue, i)
+            --game.print("timed out deconstructing belts")
+            break
+          else
+            for k,belt in pairs(entry.belt_list) do
+              if #beltutil.get_belt_inputs(belt) == 0 and beltutil.is_belt_empty(belt) then
+                -- Deconstruct this belt that has no inputs and no relevant contents
+                if belt and belt.valid then
+                  belt.order_deconstruction(belt.force)
+                end
+                table.remove(global.drill_queue[i].belt_list, k)
+                -- Wait at least 5 seconds after the last empty belt was deconstructed before timing out
+                global.drill_queue[i].timeout = math.max(global.drill_queue[i].timeout, game.tick + 300)
+                break
+              end
+            end
+            -- If we deconstructed every belt as it emptied, clear queue entry
+            if table_size(global.drill_queue[i].belt_list) == 0 then
+              table.remove(global.drill_queue, i)
+              --game.print("finished deconstructing empty belts")
               break
             end
-          end
-          -- If we deconstructed every belt as it emptied, clear queue entry
-          if table_size(global.drill_queue[i].belt_list) == 0 then
-            table.remove(global.drill_queue, i)
-            --game.print("finished deconstructing empty belts")
-            break
           end
         end
       end
