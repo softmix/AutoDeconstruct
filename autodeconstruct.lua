@@ -613,18 +613,19 @@ function autodeconstruct.process_queue()
             break
           else
             for k,belt in pairs(entry.belt_list) do
-              if #beltutil.get_belt_inputs(belt) == 0 and beltutil.is_belt_empty(belt) then
+              if not belt or not belt.valid then
+                table.remove(global.drill_queue[i].belt_list, k)
+                break
+              elseif #beltutil.get_belt_inputs(belt) == 0 and beltutil.is_belt_empty(belt) then
                 -- Deconstruct this belt that has no inputs and no relevant contents
-                if belt and belt.valid then
-                  belt.order_deconstruction(belt.force)
-                end
+                belt.order_deconstruction(belt.force)
                 table.remove(global.drill_queue[i].belt_list, k)
                 -- Wait at least 5 seconds after the last empty belt was deconstructed before timing out
                 global.drill_queue[i].timeout = math.max(global.drill_queue[i].timeout, game.tick + 300)
                 break
               end
             end
-            -- If we deconstructed every belt as it emptied, clear queue entry
+            -- If we deconstructed or cleared every belt as it emptied, clear queue entry
             if table_size(global.drill_queue[i].belt_list) == 0 then
               table.remove(global.drill_queue, i)
               --game.print("finished deconstructing empty belts")
