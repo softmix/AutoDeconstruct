@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.4.4
+Date: 2024-08-25
+  Changes:
+    - Updated translations from Crowdin.
+  Bugfixes:
+    - Fixed error message when belt is destroyed/removed before it can be marked for deconstruction.
+---------------------------------------------------------------------------------------------------
 Version: 0.4.3
 Date: 2024-08-17
   Changes:
