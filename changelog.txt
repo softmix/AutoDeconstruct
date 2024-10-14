@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.0.0
+Date: 2024-10-14
+  Features:
+    - Updated for Factorio 2.0.
+    - Added setting to preserve wire-connected belts.
+  Changes:
+    - Overhauled out-of-resources detection to use entity status field for better performance and reliability.
+    - Changed "debug" remote interface to console command.
+  Bugfixes:
+    - Fixed potential desync when using debug remote interface.
+    - Fixed that some belts were not deconstructed when side-loading.
+---------------------------------------------------------------------------------------------------
 Version: 0.4.4
 Date: 2024-08-25
   Changes:

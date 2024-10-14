@@ -4,56 +4,63 @@ data:extend({
     name = "autodeconstruct-preserve-inserter-chains",
     setting_type = "runtime-global",
     default_value = true,
-    order = "ad-a",
+    order = "ad-ab",
   },
   {
     type = "bool-setting",
     name = "autodeconstruct-remove-target",
     setting_type = "runtime-global",
     default_value = true,
-    order = "ad-aa",
+    order = "ad-ab",
   },
   {
     type = "bool-setting",
     name = "autodeconstruct-remove-beacons",
     setting_type = "runtime-global",
     default_value = true,
-    order = "ad-aa",
+    order = "ad-ac",
   },
   {
     type = "bool-setting",
     name = "autodeconstruct-remove-belts",
     setting_type = "runtime-global",
     default_value = false,
-    order = "ad-aa",
+    order = "ad-ad",
+  },
+  {
+    type = "bool-setting",
+    name = "autodeconstruct-remove-wired-belts",
+    setting_type = "runtime-global",
+    default_value = false,
+    order = "ad-ae",
   },
   {
     type = "bool-setting",
     name = "autodeconstruct-remove-wired",
     setting_type = "runtime-global",
     default_value = false,
-    order = "ad-ab",
+    order = "ad-aa",
   },
   {
     type = "bool-setting",
     name = "autodeconstruct-remove-fluid-drills",
     setting_type = "runtime-global",
     default_value = true,
-    order = "ad-b",
+    order = "ad-ba",
   },
   {
     type = "bool-setting",
     name = "autodeconstruct-build-pipes",
     setting_type = "runtime-global",
     default_value = true,
-    order = "ad-c",
+    order = "ad-bb",
   },
   {
     type = "string-setting",
     name = "autodeconstruct-pipe-name",
     setting_type = "runtime-global",
     default_value = "pipe",
-    order = "ad-d",
+    order = "ad-bc",
   },
   {
     type = "string-setting",
@@ -61,7 +68,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = "se-space-pipe",
     hidden = true,
-    order = "ad-e",
+    order = "ad-bd",
   },
   {
     type = "string-setting",
@@ -69,6 +76,6 @@ data:extend({
     setting_type = "runtime-global",
     default_value = "",
     allow_blank = true,
-    order = "ad-"
+    order = "ad-ee"
   }
 })

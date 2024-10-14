@@ -1,10 +1,10 @@
 {
 "name": "AutoDeconstruct",
-"version": "0.4.4",
-"factorio_version":"1.1",
+"version": "1.0.0",
 "title": "Auto Deconstruct",
 "author": "mindmix",
 "homepage": "https://github.com/softmix/AutoDeconstruct",
 "description": "This mod marks drills that have no more resources to mine for deconstruction.",
-"dependencies": ["base>=1.1.100"]
+"factorio_version":"2.0",
+"dependencies": ["base"]
 }
