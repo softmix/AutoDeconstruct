@@ -69,7 +69,7 @@ function autodeconstruct.init_globals()
       end
     end
   end
-  storage.max_radius = math.ceil(storage.max_radius*2)/2+0.5
+  storage.max_radius = math.ceil(storage.max_radius*2)/2+1
   
   -- Clear existing deconstruction queue_deconstruction
   storage.drill_queue = {}
@@ -91,7 +91,6 @@ local function find_target(entity)
     local entities = entity.surface.find_entities_filtered{position=entity.drop_position, limit=1}  -- works when target is a belt
     if #entities > 0 then
       if storage.debug then msg_all({"autodeconstruct-debug", "find_target", "found " .. entities[1].name .. " at " .. util.positiontostr(entities[1].position)}) end
-      --game.print("found target using position: "..entities[1].name)
       return entities[1]
     end
   end
@@ -100,7 +99,7 @@ end
 local function find_targeting(entity, types)
   local targeting = {}
 
-  for _, e in pairs(entity.surface.find_entities_filtered{position=entity.position, radius=storage.max_radius, type=types}) do
+  for _, e in pairs(entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(resource.position, storage.max_radius), type=types}) do
     if find_target(e) == entity then
       table.insert(targeting, e)
     end
@@ -114,7 +113,7 @@ end
 local function find_extracting(entity)
   local extracting = {}
 
-  for _, e in pairs(entity.surface.find_entities_filtered{position=entity.position, radius=storage.max_radius, type="inserter"}) do
+  for _, e in pairs(entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(resource.position, storage.max_radius), type="inserter"}) do
     if e.pickup_target == entity then
       table.insert(extracting, e)
     end
@@ -164,8 +163,7 @@ function autodeconstruct.on_resource_depleted(event)
     end
     return
   end
-
-  local drills = resource.surface.find_entities_filtered{position=resource.position, radius=storage.max_radius, type='mining-drill'}
+  local drills = resource.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(resource.position, storage.max_radius), type='mining-drill'}
   
   if storage.debug then msg_all({"autodeconstruct-debug", "on_resource_depleted", "found " .. #drills  .. " drills"}) end
 
@@ -263,7 +261,6 @@ local function deconstruct_belts(drill)
   while table_size(downstream_belts_to_check) > 0 do
     local next_start_belt = table.remove(downstream_belts_to_check)
     if check_is_belt_deconstructable(next_start_belt, drill, deconstruct_wired) then
-      --game.print("checking upstream from belt "..tostring(next_start_belt.unit_number))
       local upstream_belts_to_check = beltutil.get_belt_inputs(next_start_belt, to_deconstruct_map)  -- List of belts upstream of the first safe belt
       local upstream_belts_to_deconstruct = {}
       local upstream_belts_checked = {}
@@ -294,7 +291,6 @@ local function deconstruct_belts(drill)
           -- Check if it's type 2A or 2B
           -- If the other input belt is directly opposite from the original belt, then it is side-load unsafe
           for _,input in pairs(belt.belt_neighbours.inputs) do
-            game.print("Comparing "..tostring(input).." to "..tostring(next_start_belt))
             if input ~= next_start_belt then
               if input.position.x == next_start_belt.position.x or input.position.y == next_start_belt.position.y then
                 sideload_safe = false  -- one of the output belts from this is side-loaded and might reconnect incorrectly if this start_belt were removed
@@ -561,12 +557,10 @@ function autodeconstruct.process_queue()
           break
         
         elseif game.tick >= entry.timeout then
-          game.print("hit timeout tick "..tostring(game.tick).." >= "..tostring(entry.timeout))
           -- When timeout occurs, deconstruct everything
           deconstruct_drill = true
           
         elseif game.tick >= entry.tick then
-          game.print("hit timer tick "..tostring(game.tick).." >= "..tostring(entry.tick))
           -- Check conditions to see if we can deconstruct early
           if entry.target then
             if entry.target.valid then
@@ -614,7 +608,6 @@ function autodeconstruct.process_queue()
             end
             -- Clear the queue entry
             table.remove(storage.drill_queue, i)
-            --game.print("timed out deconstructing belts")
             break
           else
             for k,belt in pairs(entry.belt_list) do
@@ -633,7 +626,6 @@ function autodeconstruct.process_queue()
             -- If we deconstructed or cleared every belt as it emptied, clear queue entry
             if table_size(storage.drill_queue[i].belt_list) == 0 then
               table.remove(storage.drill_queue, i)
-              --game.print("finished deconstructing empty belts")
               break
             end
           end

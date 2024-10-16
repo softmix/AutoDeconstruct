@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.0.1
+Date: 2024-10-15
+  Bugfixes:
+    - Fixed Big Mining Drill not being deconstructed if last ore was at edge of mining range.
+    - Added missing locale string for mod setting.
+    - Removed remaining debug console messages.
+---------------------------------------------------------------------------------------------------
 Version: 1.0.0
 Date: 2024-10-14
   Features:
