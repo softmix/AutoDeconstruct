@@ -99,7 +99,7 @@ end
 local function find_targeting(entity, types)
   local targeting = {}
 
-  for _, e in pairs(entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(resource.position, storage.max_radius), type=types}) do
+  for _, e in pairs(entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(entity.position, storage.max_radius), type=types}) do
     if find_target(e) == entity then
       table.insert(targeting, e)
     end
@@ -113,7 +113,7 @@ end
 local function find_extracting(entity)
   local extracting = {}
 
-  for _, e in pairs(entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(resource.position, storage.max_radius), type="inserter"}) do
+  for _, e in pairs(entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(entity.position, storage.max_radius), type="inserter"}) do
     if e.pickup_target == entity then
       table.insert(extracting, e)
     end
