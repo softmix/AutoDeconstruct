@@ -1,4 +1,81 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.0.2
+Date: 2024-10-16
+  Bugfixes:
+    - Fixed copy-paste error preventing some drills from being removed.
+---------------------------------------------------------------------------------------------------
+Version: 1.0.1
+Date: 2024-10-15
+  Bugfixes:
+    - Fixed Big Mining Drill not being deconstructed if last ore was at edge of mining range.
+    - Added missing locale string for mod setting.
+    - Removed remaining debug console messages.
+---------------------------------------------------------------------------------------------------
+Version: 1.0.0
+Date: 2024-10-14
+  Features:
+    - Updated for Factorio 2.0.
+    - Added setting to preserve wire-connected belts.
+  Changes:
+    - Overhauled out-of-resources detection to use entity status field for better performance and reliability.
+    - Changed "debug" remote interface to console command.
+  Bugfixes:
+    - Fixed potential desync when using debug remote interface.
+    - Fixed that some belts were not deconstructed when side-loading.
+---------------------------------------------------------------------------------------------------
+Version: 0.4.4
+Date: 2024-08-25
+  Changes:
+    - Updated translations from Crowdin.
+  Bugfixes:
+    - Fixed error message when belt is destroyed/removed before it can be marked for deconstruction.
+---------------------------------------------------------------------------------------------------
+Version: 0.4.3
+Date: 2024-08-17
+  Changes:
+    - Added minimum base version of 1.1.100 for API compatibility.
+  Bugfixes:
+    - Abort any ongoing belt deconstructions when belt setting is disabled.
+---------------------------------------------------------------------------------------------------
+Version: 0.4.2
+Date: 2024-08-17
+  Changes:
+    - Updated translations from Crowdin.
+---------------------------------------------------------------------------------------------------
+Version: 0.4.1
+Date: 2024-07-09
+  Bugfixes:
+    - Fixed errors when drills point at assemblers and other non-chest entities.
+---------------------------------------------------------------------------------------------------
+Version: 0.4.0
+Date: 2024-07-07
+  Features:
+    - Added setting to also deconstruct unused beacons (enabled by default).
+    - Added setting to also deconstruct unused belts (DISabled by default).
+    - Belt deconstruction is greedy and will deconstruct belts up and downstream from the deconstructed drill if no item sources are found.
+    - Belt deconstruction tries to wait for the belts to naturally empty before deconstructing.  If items get stuck for more than 30 seconds, the belts will be deconstructed anyways.
+    - Belt deconstruction feature is *alpha* so make a backup before enabling the setting.  Please report any strange behavior or crashes!
+---------------------------------------------------------------------------------------------------
+Version: 0.3.16
+Date: 2024-07-04
+  Bugfixes:
+    - Fixed error when pipe ghosts aren't built fast enough.
+---------------------------------------------------------------------------------------------------
+Version: 0.3.15
+Date: 2024-06-30
+  Changes:
+    - Updated Portugese translation thanks to LUISDASARTIMANHAS.
+---------------------------------------------------------------------------------------------------
+Version: 0.3.14
+Date: 2024-06-30
+  Changes:
+    - Added setting to blacklist specific drill entities for mod compatibility.
+---------------------------------------------------------------------------------------------------
+Version: 0.3.13
+Date: 2024-06-30
+  Changes:
+    - Updated many translations from crowdin and fixed typo
+---------------------------------------------------------------------------------------------------
 Version: 0.3.12
 Date: 2023-11-16
   Changes:
