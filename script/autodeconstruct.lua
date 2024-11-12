@@ -64,13 +64,13 @@ function autodeconstruct.init_globals()
       if p.mining_drill_radius then
         if p.mining_drill_radius > storage.max_radius then
           storage.max_radius = p.mining_drill_radius
-          if storage.debug then msg_all({"autodeconstruct-debug", "init_globals", "storage.max_radius updated to " .. storage.max_radius}) end
         end
       end
     end
   end
-  storage.max_radius = math.ceil(storage.max_radius*2)/2+1
-  
+  storage.max_radius = math.ceil(storage.max_radius*2)+1
+  if storage.debug then msg_all({"autodeconstruct-debug", "init_globals", "storage.max_radius updated to " .. storage.max_radius}) end
+
   -- Clear existing deconstruction queue_deconstruction
   storage.drill_queue = {}
 

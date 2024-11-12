@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.0.3
+Date: 2024-11-12
+  Changes:
+    - Many updated translations from Crowdin.
+  Bugfixes:
+    - Fixed that mining drill search area was half what it should be.
+---------------------------------------------------------------------------------------------------
 Version: 1.0.2
 Date: 2024-10-16
   Bugfixes:
