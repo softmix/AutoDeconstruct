@@ -42,6 +42,10 @@ local function check_drill(drill)
     return -- this should also filter out pumpjacks and infinite resources
   end
   
+  if drill.to_be_deconstructed() then
+    return
+  end
+  
   -- Queue every drill within range of the depleted resource, check for resources in a few ticks
   table.insert(storage.drill_queue, {tick=game.tick+RESOURCE_CHECK_TIME, check_drill=drill})
 end
@@ -71,6 +75,8 @@ function autodeconstruct.init_globals()
   storage.max_radius = math.ceil(storage.max_radius*2)+1
   if storage.debug then msg_all({"autodeconstruct-debug", "init_globals", "storage.max_radius updated to " .. storage.max_radius}) end
 
+  pipeutil.cache_pipe_categories()
+  
   -- Clear existing deconstruction queue_deconstruction
   storage.drill_queue = {}
 
@@ -122,10 +128,6 @@ local function find_extracting(entity)
   if storage.debug then msg_all({"autodeconstruct-debug", "find_extracting", "found " .. #extracting .. " extracting"}) end
 
   return extracting
-end
-
-function autodeconstruct.is_valid_pipe(name)
-  return prototypes.entity[name] and prototypes.entity[name].type == "pipe"
 end
 
 local function queue_deconstruction(drill)
@@ -419,34 +421,19 @@ local function order_deconstruction(drill)
   
   local has_fluid = false
   local pipeType = nil
+  local pipesToBuild = nil
   if drill.fluidbox and #drill.fluidbox > 0 then
     has_fluid = true
     if not settings.global['autodeconstruct-remove-fluid-drills'].value then
       debug_message_with_position(drill, "has a non-empty fluidbox and fluid deconstruction is not enabled, skipping")
-
       return
     end
-    --Space Exploration Compatibility check for space-surfaces
-    -- Select the pipe to use for replacements
-    pipeType = settings.global['autodeconstruct-pipe-name'].value
-    local is_space = false
-    if script.active_mods["space-exploration"] then
-      local se_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = drill.surface.index})
-      is_space = ( se_zone and remote.call("space-exploration", "get_zone_is_space", {zone_index = se_zone.index}) ) or false
-      if is_space then
-        pipeType = settings.global['autodeconstruct-space-pipe-name'].value
-      end
-    end
-
-    if not autodeconstruct.is_valid_pipe(pipeType) then
-      if is_space then
-        debug_message_with_position(drill, "can't find space pipe named '"..pipeType.."' to infill depleted fluid miner in space.")
-      else
-        debug_message_with_position(drill, "can't find pipe named '"..pipeType.."' to infill depleted fluid miner.")
-      end
-
-      return
-    end
+    -- Select the pipe to use for replacements, based on connection categories, collision masks, and available logistics inventory
+    pipesToBuild = pipeutil.find_pipes_to_build(drill)
+    --pipeType = settings.global['autodeconstruct-pipe-name'].value
+    pipeType = pipeutil.choose_pipe(drill, pipesToBuild)
+    
+    if not pipeType then return end
   end
 
   
@@ -460,25 +447,21 @@ local function order_deconstruction(drill)
 
   if not drill.minable then
     debug_message_with_position(drill, "is not minable, skipping")
-
     return
   end
 
   if not drill.prototype.selectable_in_game then
     debug_message_with_position(drill, "is not selectable in game, skipping")
-
     return
   end
 
   if drill.has_flag("not-deconstructable") then
     debug_message_with_position(drill, "is flagged as not-deconstructable, skipping")
-
     return
   end
 
   if settings.global['autodeconstruct-preserve-inserter-chains'].value and drill.burner and #find_extracting(drill)>0 then
     debug_message_with_position(drill, "is part of inserter chain, skipping")
-
     return
   end
 
@@ -501,7 +484,7 @@ local function order_deconstruction(drill)
   local pipe_ghosts = {}
   if has_fluid and settings.global['autodeconstruct-build-pipes'].value then
     debug_message_with_position(drill, "trying to add pipe blueprints")
-    pipe_ghosts = pipeutil.build_pipes(drill, pipeType)
+    pipe_ghosts = pipeutil.build_pipes(drill, pipeType, pipesToBuild)
   end
   
   if drill.order_deconstruction(drill.force) then

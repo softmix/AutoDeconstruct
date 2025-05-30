@@ -64,14 +64,6 @@ data:extend({
   },
   {
     type = "string-setting",
-    name = "autodeconstruct-space-pipe-name",
-    setting_type = "runtime-global",
-    default_value = "se-space-pipe",
-    hidden = true,
-    order = "ad-bd",
-  },
-  {
-    type = "string-setting",
     name = "autodeconstruct-blacklist",
     setting_type = "runtime-global",
     default_value = "",
