@@ -1,8 +1,8 @@
 ---------------------------------------------------------------------------------------------------
-Version: 1.1.0
-Date: 2025-05-28
+Version: 1.0.4
+Date: 2025-05-30
   Features:
-    - Pipes to build are now selected automatically based on collision mask, connection category, and logistic network inventory.
+    - Pipes type to build is now selected automatically based on collision mask, connection category, and logistic network inventory (non-mobile networks only).
   Changes:
     - Updated translations from Crowdin.
     - Pipe type setting is now a priority list of pipes to use when none are available in logistics.
