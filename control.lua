@@ -13,10 +13,10 @@ end
 
 function debug_message_with_position(entity, msg)
   if not storage.debug then return end
-
   msg_all({"autodeconstruct-debug", util.positiontostr(entity.position) .. " " .. entity.name  .. " " .. msg})
 end
 
+-- Use a prime number interval so we don't regularly collide with any even-numbered events
 local UPDATE_INTERVAL = 17
 
 local function on_nth_tick()
@@ -28,10 +28,10 @@ end
 
 local function update_tick_event()
   if storage.drill_queue and next(storage.drill_queue) then
-    -- Make sure event is enabled
+    -- Make sure event is enabled when queue has entries
     script.on_nth_tick(UPDATE_INTERVAL, on_nth_tick)
   else
-    -- Make sure event is disabled
+    -- Make sure event is disabled when queue is empty
     script.on_nth_tick(UPDATE_INTERVAL, nil)
   end
 end

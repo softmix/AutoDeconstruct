@@ -224,25 +224,6 @@ local function list_intersection(inputs)
   return c
 end
 
-local function list_union(inputs)
-  local c = {}
-  for _,list in pairs(inputs) do
-    for _,v in pairs(list) do
-      local found = false
-      for _,cv in pairs(c) do
-        if v == cv then
-          found = true
-          break
-        end
-      end
-      if not found then
-        table.insert(c, v)
-      end
-    end
-  end
-  return c
-end
-
 function pipeutil.choose_pipe(drill, pipes_to_build)
 
   --log(serpent.line(pipes_to_build))
@@ -287,6 +268,7 @@ function pipeutil.choose_pipe(drill, pipes_to_build)
   for _,name in pairs(storage.default_pipes) do
     if valid_pipes[name] then
       chosen_default = name
+      break
     end
   end
   -- If priority pipes aren't available, use any valid pipe as the default
@@ -294,28 +276,35 @@ function pipeutil.choose_pipe(drill, pipes_to_build)
     chosen_default = next(valid_pipes)
   end
   
-  local preferred_pipe = {name=chosen_default, quality="normal", count=0}
+  local default_pipe = {name=chosen_default, quality="normal", count=0}
+  local available_pipe = {quality="normal", count=0}
+  
+  local pipes_needed = #pipes_to_build
   
   -- Find the networks that cover the whole drill
   local box = snap_box_to_grid(drill.selection_box)
-  local networks = list_intersection{ drill.surface.find_logistic_networks_by_construction_area(vectorSub(box.left_top, drill.position), drill.force), 
-                                      drill.surface.find_logistic_networks_by_construction_area(vectorSub(box.right_bottom, drill.position), drill.force)}
+  local networks = list_intersection{ drill.surface.find_logistic_networks_by_construction_area(vectorAdd(vectorSub(box.left_top, drill.position), {0.5,0.5}), drill.force), 
+                                      drill.surface.find_logistic_networks_by_construction_area(vectorSub(vectorSub(box.right_bottom, drill.position), {0.5,0.5}), drill.force)}
   -- Now see what pipes are available in each network
   -- Only stationary networks of this force, so there should only be one
+  -- Choose whichever pipe has the most available and at least the right amount
   for _,network in pairs(networks) do
     if #network.cells > 1 or network.cells[1].mobile == false then
       local contents = network.get_contents()
       for _,item in pairs(contents) do
-        if valid_pipes[item.name] and item.count > preferred_pipe.count then
-          preferred_pipe = table.deepcopy(item)
+        if valid_pipes[item.name] and item.count > available_pipe.count and item.count >= pipes_needed then
+          available_pipe = table.deepcopy(item)
         end
       end
     end
   end
   
-  if preferred_pipe.name then
-    debug_message_with_position(drill, "Selected pipe "..serpent.line(preferred_pipe).." from among "..serpent.line(valid_pipes).." to connect neighbors")
-    return preferred_pipe
+  if available_pipe.name then
+    debug_message_with_position(drill, "Selected available pipe "..serpent.line(available_pipe).." from among "..serpent.line(valid_pipes).." to connect neighbors")
+    return available_pipe
+  elseif default_pipe.name then
+    debug_message_with_position(drill, "Selected default pipe "..serpent.line(default_pipe).." from among "..serpent.line(valid_pipes).." to connect neighbors")
+    return default_pipe
   else
     debug_message_with_position(drill, "No valid pipe to infill depleted fluid miner.")
     return nil
