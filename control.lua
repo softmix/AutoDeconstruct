@@ -89,7 +89,8 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if( event.setting == "autodeconstruct-pipe-name" or 
       event.setting == "autodeconstruct-remove-fluid-drills" or 
       event.setting == "autodeconstruct-remove-wired" or
-      event.setting == "autodeconstruct-blacklist" ) then
+      event.setting == "autodeconstruct-blacklist" or
+      event.setting == "autodeconstruct-ore-blacklist" ) then
     autodeconstruct.init_globals()
   end
   update_tick_event()

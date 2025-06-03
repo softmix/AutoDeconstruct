@@ -60,6 +60,14 @@ function autodeconstruct.init_globals()
     end
   end
   
+  -- Update the ore blacklist with the current setting value (whitespace, comma, and semicolon are valid separators)
+  storage.ore_blacklist = {}
+  for token in string.gmatch(settings.global["autodeconstruct-ore-blacklist"].value,"([^%s,;]+)") do
+    if prototypes.entity[token] then
+      storage.ore_blacklist[token] = true
+    end
+  end
+  
   -- Find largest-range miner in the game (only check drills not on the blacklist)
   storage.max_radius = 1
   local drill_prototypes = prototypes.get_entity_filtered{{filter="type",type="mining-drill"}}
@@ -159,15 +167,15 @@ end
 
 function autodeconstruct.on_resource_depleted(event)
   local resource = event.entity
-  if resource.prototype.infinite_resource then
+  if storage.ore_blacklist[resource.name] or resource.prototype.infinite_resource then
     if storage.debug then
-      msg_all({"autodeconstruct-debug", "on_resource_depleted", game.tick .. " amount " .. resource.amount .. " resource_category " .. resource.prototype.resource_category .. " infinite_resource " .. (resource.prototype.infinite_resource == true and "true" or "false" )})
+      msg_all({"autodeconstruct-debug", "on_resource_depleted tick=".. tostring(game.tick) .. ", amount=" .. resource.amount .. ", resource_category=" .. resource.prototype.resource_category .. ", infinite_resource=" .. tostring(resource.prototype.infinite_resource) .. ", ore blacklist=" .. tostring(storage.ore_blacklist[resource.name])})
     end
     return
   end
   local drills = resource.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(resource.position, storage.max_radius), type='mining-drill'}
   
-  if storage.debug then msg_all({"autodeconstruct-debug", "on_resource_depleted", "found " .. #drills  .. " drills"}) end
+  if storage.debug then msg_all({"autodeconstruct-debug", "on_resource_depleted tick=".. tostring(game.tick) .. ", found " .. #drills  .. " drills"}) end
 
   for _, drill in pairs(drills) do
     check_drill(drill)

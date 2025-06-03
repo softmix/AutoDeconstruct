@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.0.5
+Date: 2025-06-03
+  Features:
+    - Added "ore blacklist" of ores to ignore when they are depleted.
+  Changes:
+    - Added "tiberium-ore" to the ore blacklist by default for compatibility with Factorio and Conquer: Tiberian Dawn.
+---------------------------------------------------------------------------------------------------
 Version: 1.0.4
 Date: 2025-05-30
   Features:

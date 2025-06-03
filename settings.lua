@@ -69,5 +69,13 @@ data:extend({
     default_value = "",
     allow_blank = true,
     order = "ad-ee"
+  },
+  {
+    type = "string-setting",
+    name = "autodeconstruct-ore-blacklist",
+    setting_type = "runtime-global",
+    default_value = "",
+    allow_blank = true,
+    order = "ad-ef"
   }
 })
