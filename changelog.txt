@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.0.6
+Date: 2025-06-19
+  Changes:
+    - Updated translations from Crowdin.
+    - Updated mining drill search radius based on quality bonus added in 2.0.57.
+---------------------------------------------------------------------------------------------------
 Version: 1.0.5
 Date: 2025-06-03
   Features:
