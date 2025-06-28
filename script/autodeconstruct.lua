@@ -78,19 +78,20 @@ function autodeconstruct.init_globals()
       max_quality = q
     end
   end
-  log("Found quality "..max_quality.name.." has mining radius bonus of "..tostring(max_quality_radius_bonus))
-  local drill_max_radius = 1
+  log("Found quality mining radius bonus of "..tostring(max_quality_radius_bonus))
+  storage.max_radius = 1
   local drill_prototypes = prototypes.get_entity_filtered{{filter="type",type="mining-drill"}}
   for _, p in pairs(drill_prototypes) do
     if not storage.blacklist[p.name] then
-      if p.get_mining_drill_radius(max_quality) > drill_max_radius then
-        drill_max_radius = p.get_mining_drill_radius(max_quality)
+      if p.mining_drill_radius then
+        if p.mining_drill_radius > storage.max_radius then
+          storage.max_radius = p.get_mining_drill_radius(max_quality)
+        end
       end
     end
   end
-  storage.max_radius = math.ceil(drill_max_radius*2)+1
-  log("Largest drill radius is "..tostring(drill_max_radius)..", storage.max_radius updated to " .. tostring(storage.max_radius))
-  if storage.debug then msg_all({"autodeconstruct-debug", "init_globals", "Largest drill radius is "..tostring(drill_max_radius)..", storage.max_radius updated to " .. tostring(storage.max_radius)}) end
+  storage.max_radius = math.ceil(storage.max_radius*2)+1
+  if storage.debug then msg_all({"autodeconstruct-debug", "init_globals", "storage.max_radius updated to " .. storage.max_radius}) end
 
   pipeutil.cache_pipe_categories()
   
