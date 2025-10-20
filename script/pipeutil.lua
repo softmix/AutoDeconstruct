@@ -191,7 +191,21 @@ function pipeutil.find_pipes_to_build(drill)
     if connection.connection_type == "normal" and connection.target then
       -- Determine the connection categories of the other pipe connection
       -- Find which pipe_connection prototype in the connected entity is connected to this one.
-      local target_pipe_categories = connection.target.get_prototype(connection.target_fluidbox_index).pipe_connections[connection.target_pipe_connection_index].connection_category
+      local target_fluidbox_prototypes = connection.target.get_prototype(connection.target_fluidbox_index)
+      local merged_connection_definition_list = {}
+      if target_fluidbox_prototypes.object_name then
+        merged_connection_definition_list = target_fluidbox_prototypes.pipe_connections
+      else
+        for n=1,#target_fluidbox_prototypes do
+          local conns = target_fluidbox_prototypes[n].pipe_connections
+          for m=1,#conns do
+            table.insert(merged_connection_definition_list, conns[m])
+          end
+        end
+      end
+      local target_connection_definition = merged_connection_definition_list[connection.target_pipe_connection_index]
+      local target_pipe_categories = target_connection_definition.connection_category
+      --log(string.format("Connection between %s and %s has category %s", drill.name, connection.target.owner.name, serpent.line(target_pipe_categories)))
       table.insert(pipes_to_build, {offset=vectorSub(connection.position, drill.position), categories=target_pipe_categories})
     end
   end
