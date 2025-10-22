@@ -117,7 +117,7 @@ local function find_target(entity)
     if storage.debug then msg_all({"autodeconstruct-debug", "find_target", "found " .. entity.drop_target.name .. " at " .. util.positiontostr(entity.drop_target.position)}) end
     return entity.drop_target
   else
-    local entities = entity.surface.find_entities_filtered{position=entity.drop_position, limit=1}  -- works when target is a belt
+    local entities = entity.surface.find_entities_filtered{position=entity.drop_position, limit=1}  -- works when target is a belt, or when entity is a ghost or hasn't started dropping in chest yet
     if #entities > 0 then
       if storage.debug then msg_all({"autodeconstruct-debug", "find_target", "found " .. entities[1].name .. " at " .. util.positiontostr(entities[1].position)}) end
       return entities[1]
@@ -127,8 +127,14 @@ end
 
 local function find_targeting(entity, types)
   local targeting = {}
-
-  for _, e in pairs(entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(entity.position, storage.max_radius), type=types}) do
+  local found_entities = entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(entity.position, storage.max_radius), type=types}
+  for _, e in pairs(found_entities) do
+    if find_target(e) == entity then
+      table.insert(targeting, e)
+    end
+  end
+  local found_ghosts = entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(entity.position, storage.max_radius), ghost_type=types}
+  for _, e in pairs(found_ghosts) do
     if find_target(e) == entity then
       table.insert(targeting, e)
     end
@@ -242,7 +248,7 @@ local function check_is_belt_deconstructable(target, drill, deconstruct_wired)
      (not storage.blacklist[target.name]) and beltutil.belt_type_check[target.type] and 
      (deconstruct_wired or not target.get_control_behavior()) then
     -- This belt is safe to deconstruct if necessary
-    local targeting = find_targeting(target, {'mining-drill', 'inserter'})
+    local targeting = find_targeting(target, {'mining-drill', 'inserter', 'assembling-machine', 'furnace'})
     
     if #targeting == 0 then
       debug_message_with_position(target, "checked "..tostring(target.unit_number).." for targeting entities, found "..tostring(#targeting)..". Not targeted by anything.")
@@ -394,7 +400,7 @@ local function deconstruct_target(drill)
 
   if target ~= nil and target.minable and target.prototype.selectable_in_game and not storage.blacklist[target.name] then
     if target.type == "logistic-container" or target.type == "container" or target.type == "linked-container" then
-      local targeting = find_targeting(target, {'mining-drill', 'inserter'})
+      local targeting = find_targeting(target, {'mining-drill', 'inserter', 'assembling-machine', 'furnace'})
 
       if targeting ~= nil then
         local chest_is_idle = true
