@@ -1,6 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.8
 Date: 2025-10-XX
+  Features:
+    - Belt deconstruction logic now removes loaders at the end of the empty belt.
   Changes:
     - Updated translations from Crowdin.
     - Added support for mining drill area offset (new feature added in 2.0.68).
@@ -9,6 +11,7 @@ Date: 2025-10-XX
     - Fixed that belts were deconstructed even though ghost entities were targeting them.
     - Fixed crash when attempting to connect pipes to a chemical plant with merged fluidboxes.
     - Fixed that linked chests were not deconstructed like other chests.
+    - Fixed that chests were deconstructed even though a loader was targeting it.
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.7
 Date: 2025-06-27

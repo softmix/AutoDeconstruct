@@ -1,7 +1,7 @@
 require "util"
 
 beltutil = {}
-beltutil.belt_type_check = {["transport-belt"]=true, ["underground-belt"]=true, ["splitter"]=true}
+beltutil.belt_type_check = util.list_to_map({"transport-belt","underground-belt","splitter","loader","loader-1x1"})
 
 -- These functions return a list of belt neighbors that includes underground belt input/output, since they are in a different API structure.
 -- The exclude list is a map of unit_number->true that contains belts we have queued for deconstruction already, so ignore them as neighbors

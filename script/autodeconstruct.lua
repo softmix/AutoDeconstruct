@@ -100,18 +100,21 @@ function autodeconstruct.init_globals()
 
   -- Find the largest drop-distance in the game to search for targeting entities
   local new_target_radius = 1
-  local targeter_prototypes = prototypes.get_entity_filtered{{filter="type",type={"mining-drill","inserter","assembling-machine","furnace"}}}
+  local targeter_prototypes = prototypes.get_entity_filtered{{filter="type",type={"mining-drill","inserter","assembling-machine","furnace","loader","loader-1x1"}}}
   for _,p in pairs(targeter_prototypes) do
-    local drop_pos
+    local drop_distance = 0
     if p.type == "inserter" then
-      drop_pos = p.inserter_drop_position or {0,0}
+      local drop_pos = p.inserter_drop_position or {0,0}
+      drop_distance = math.max(math.abs(drop_pos.x or drop_pos[1]), math.abs(drop_pos.y or drop_pos[2]))
+    elseif p.type == "loader" or p.type == "loader-1x1" then
+      drop_distance = math.abs(p.container_distance)
     else
-      drop_pos = p.vector_to_place_result or {0,0}
+      local drop_pos = p.vector_to_place_result or {0,0}
+      drop_distance = math.max(math.abs(drop_pos.x or drop_pos[1]), math.abs(drop_pos.y or drop_pos[2]))
     end
-    local max_drop_distance = math.max(math.abs(drop_pos.x or drop_pos[1]), math.abs(drop_pos.y or drop_pos[2]))
-    if max_drop_distance > new_target_radius then
-      new_target_radius = max_drop_distance
-      log("New target radius found of "..p.name.." with drop position "..serpent.line(drop_pos).." for radius of "..tostring(max_drop_distance))
+    if drop_distance > new_target_radius then
+      new_target_radius = drop_distance
+      log("New target found of "..p.name.." for radius of "..tostring(new_target_radius))
     end
   end
   storage.target_radius = math.ceil(new_target_radius*2)+1
