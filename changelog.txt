@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.8
-Date: 2025-10-XX
+Date: 2025-10-22
   Features:
     - Belt deconstruction logic now removes loaders at the end of the empty belt.
     - Added setting to deconstruct tiles under all removed entities (off by default).
