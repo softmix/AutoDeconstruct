@@ -98,6 +98,26 @@ function autodeconstruct.init_globals()
   log("storage.max_radius updated to " .. tostring(storage.max_radius))
   if storage.debug then msg_all({"autodeconstruct-debug", "init_globals", "storage.max_radius updated to " .. storage.max_radius}) end
 
+  -- Find the largest drop-distance in the game to search for targeting entities
+  local new_target_radius = 1
+  local targeter_prototypes = prototypes.get_entity_filtered{{filter="type",type={"mining-drill","inserter","assembling-machine","furnace"}}}
+  for _,p in pairs(targeter_prototypes) do
+    local drop_pos
+    if p.type == "inserter" then
+      drop_pos = p.inserter_drop_position or {0,0}
+    else
+      drop_pos = p.vector_to_place_result or {0,0}
+    end
+    local max_drop_distance = math.max(math.abs(drop_pos.x or drop_pos[1]), math.abs(drop_pos.y or drop_pos[2]))
+    if max_drop_distance > new_target_radius then
+      new_target_radius = max_drop_distance
+      log("New target radius found of "..p.name.." with drop position "..serpent.line(drop_pos).." for radius of "..tostring(max_drop_distance))
+    end
+  end
+  storage.target_radius = math.ceil(new_target_radius*2)+1
+  log("storage.target_radius updated to " .. tostring(storage.target_radius))
+  if storage.debug then msg_all({"autodeconstruct-debug", "init_globals", "storage.target_radius updated to " .. storage.target_radius}) end
+
   pipeutil.cache_pipe_categories()
   
   -- Clear existing deconstruction queue_deconstruction
@@ -127,13 +147,13 @@ end
 
 local function find_targeting(entity, types)
   local targeting = {}
-  local found_entities = entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(entity.position, storage.max_radius), type=types}
+  local found_entities = entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(entity.position, storage.target_radius), type=types}
   for _, e in pairs(found_entities) do
     if find_target(e) == entity then
       table.insert(targeting, e)
     end
   end
-  local found_ghosts = entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(entity.position, storage.max_radius), ghost_type=types}
+  local found_ghosts = entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(entity.position, storage.target_radius), ghost_type=types}
   for _, e in pairs(found_ghosts) do
     if find_target(e) == entity then
       table.insert(targeting, e)
@@ -148,7 +168,7 @@ end
 local function find_extracting(entity)
   local extracting = {}
 
-  for _, e in pairs(entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(entity.position, storage.max_radius), type="inserter"}) do
+  for _, e in pairs(entity.surface.find_entities_filtered{area=math2d.bounding_box.create_from_centre(entity.position, storage.target_radius), type="inserter"}) do
     if e.pickup_target == entity then
       table.insert(extracting, e)
     end
