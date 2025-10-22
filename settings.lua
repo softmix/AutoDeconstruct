@@ -36,6 +36,13 @@ data:extend({
   },
   {
     type = "bool-setting",
+    name = "autodeconstruct-remove-tiles",
+    setting_type = "runtime-global",
+    default_value = false,
+    order = "ad-af",
+  },
+  {
+    type = "bool-setting",
     name = "autodeconstruct-remove-wired",
     setting_type = "runtime-global",
     default_value = false,

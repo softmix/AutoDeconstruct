@@ -235,6 +235,13 @@ function autodeconstruct.on_cancelled_deconstruction(event)
 end
 
 
+local function deconstruct_tiles(entity)
+  if settings.global["autodeconstruct-remove-tiles"].value then
+    entity.surface.deconstruct_area{area=entity.bounding_box, force=entity.force, super_forced=true}
+  end
+end
+
+
 local function deconstruct_beacons(drill)
   local beacons = drill.get_beacons()
   if beacons == nil then return end   -- Drills that don't accept beacons return nil intead of empty list
@@ -253,6 +260,7 @@ local function deconstruct_beacons(drill)
       if not beacon_busy then
         local ent_dat = {name=beacon.name, position=beacon.position}
         if beacon.order_deconstruction(beacon.force) then
+          deconstruct_tiles(beacon)
           if beacon and beacon.valid then
             debug_message_with_position(beacon, "marked for deconstruction")
           else
@@ -392,7 +400,6 @@ local function deconstruct_belts(drill)
       --   including the one we started at if it's sideload-safe, since if we got here we did not find any other users attached
       if not belt_in_use then
         for _,belt in pairs(upstream_belts_to_deconstruct) do
-          --belt.order_deconstruction(belt.force)
           table.insert(to_deconstruct_list, belt)
           to_deconstruct_map[belt.unit_number] = true
         end
@@ -441,6 +448,7 @@ local function deconstruct_target(drill)
           end
           local ent_dat = {name=target.name, position=target.position}
           if target.order_deconstruction(target.force) then
+            deconstruct_tiles(target)
             if target and target.valid then
               debug_message_with_position(target, "marked for deconstruction")
             else
@@ -540,6 +548,7 @@ local function order_deconstruction(drill)
   end
   
   if drill.order_deconstruction(drill.force) then
+    deconstruct_tiles(drill)
     if drill and drill.valid then
       debug_message_with_position(drill, "marked for deconstruction")
       -- Check for inserters providing fuel to this miner
@@ -547,6 +556,7 @@ local function order_deconstruction(drill)
         local targeting = find_targeting(drill, {'inserter'})
         for _,e in pairs(targeting) do
           e.order_deconstruction(e.force)
+          deconstruct_tiles(e)
         end
       end
     else
@@ -639,6 +649,7 @@ function autodeconstruct.process_queue()
             for _,belt in pairs(entry.belt_list) do
               if belt and belt.valid then
                 belt.order_deconstruction(belt.force)
+                deconstruct_tiles(belt)
               end
             end
             -- Clear the queue entry
@@ -652,6 +663,7 @@ function autodeconstruct.process_queue()
               elseif #beltutil.get_belt_inputs(belt) == 0 and beltutil.is_belt_empty(belt) then
                 -- Deconstruct this belt that has no inputs and no relevant contents
                 belt.order_deconstruction(belt.force)
+                deconstruct_tiles(belt)
                 table.remove(storage.drill_queue[i].belt_list, k)
                 -- Wait at least 5 seconds after the last empty belt was deconstructed before timing out
                 storage.drill_queue[i].timeout = math.max(storage.drill_queue[i].timeout, game.tick + BELT_INACTIVITY_TIME)

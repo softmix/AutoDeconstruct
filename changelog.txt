@@ -3,9 +3,11 @@ Version: 1.0.8
 Date: 2025-10-XX
   Features:
     - Belt deconstruction logic now removes loaders at the end of the empty belt.
+    - Added setting to deconstruct tiles under all removed entities (off by default).
   Changes:
     - Updated translations from Crowdin.
     - Added support for mining drill area offset (new feature added in 2.0.68).
+    - Optimized search radius for targeting entities.
   Bugfixes:
     - Fixed that belts were deconstructed even though recyclers were targeting them.
     - Fixed that belts were deconstructed even though ghost entities were targeting them.
