@@ -1,4 +1,15 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.0.8
+Date: 2025-10-XX
+  Changes:
+    - Updated translations from Crowdin.
+    - Added support for mining drill area offset (new feature added in 2.0.68).
+  Bugfixes:
+    - Fixed that belts were deconstructed even though recyclers were targeting them.
+    - Fixed that belts were deconstructed even though ghost entities were targeting them.
+    - Fixed crash when attempting to connect pipes to a chemical plant with merged fluidboxes.
+    - Fixed that linked chests were not deconstructed like other chests.
+---------------------------------------------------------------------------------------------------
 Version: 1.0.7
 Date: 2025-06-27
   Changes:
