@@ -169,7 +169,7 @@ local function queue_deconstruction(drill)
   if target then
     if target.type == "logistic-container" then
       lp = target.get_logistic_point(defines.logistic_member_index.logistic_container)  -- logistic container means keep target and store logistic point
-    elseif target.type ~= "container" then
+    elseif target.type ~= "container" and target.type ~= "linked-container" then
       target = nil  -- not logistic container and not container means don't keep target, it's something we can't deconstruct
     end
   end
@@ -393,7 +393,7 @@ local function deconstruct_target(drill)
   local target = find_target(drill)
 
   if target ~= nil and target.minable and target.prototype.selectable_in_game and not storage.blacklist[target.name] then
-    if target.type == "logistic-container" or target.type == "container" then
+    if target.type == "logistic-container" or target.type == "container" or target.type == "linked-container" then
       local targeting = find_targeting(target, {'mining-drill', 'inserter'})
 
       if targeting ~= nil then
