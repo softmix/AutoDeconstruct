@@ -302,6 +302,18 @@ local function check_is_belt_deconstructable(target, drill, deconstruct_wired)
 end
 
 
+local function belt_string(belt)
+  return string.format("[%d] %s %s",belt.unit_number, belt.name , util.positiontostr(belt.position))
+end
+
+local function log_belts(belts, label)
+  local log_list = {}
+  for k=1,#belts do
+    log_list[k] = belt_string(belts[k])
+  end
+  log(label..":\n"..serpent.block(log_list))
+end
+
 local function deconstruct_belts(drill)
   local to_deconstruct_list = {}
   local to_deconstruct_map = {}
@@ -320,8 +332,14 @@ local function deconstruct_belts(drill)
   
   -- 3. Go to each downstream belt and see if everything upstream of it can be removed
   local downstream_belts_to_check = {starting_belt}
+  local loopcounter = 0
   while table_size(downstream_belts_to_check) > 0 do
+    loopcounter = loopcounter + 1
+    if #downstream_belts_to_check > 1 then
+      --log_belts(downstream_belts_to_check, "Loop "..tostring(loopcounter).." START downstream_belts_to_check")
+    end
     local next_start_belt = table.remove(downstream_belts_to_check)
+    --log(string.format("Loop %d Checking next_start_belt = %s", loopcounter, belt_string(next_start_belt)))
     if check_is_belt_deconstructable(next_start_belt, drill, deconstruct_wired) then
       local upstream_belts_to_check = beltutil.get_belt_inputs(next_start_belt, to_deconstruct_map)  -- List of belts upstream of the first safe belt
       local upstream_belts_to_deconstruct = {}
@@ -373,9 +391,11 @@ local function deconstruct_belts(drill)
       
       -- 3b. Follow the tree upstream, make a list of all the belts we travel and stop if we find another dropping entity
       local belt_in_use = false
+      local upstreamloops = 0
       while table_size(upstream_belts_to_check) > 0 do
+        upstreamloops = upstreamloops + 1
         local next_belt = table.remove(upstream_belts_to_check)
-        
+        --log(string.format("Loop %d checking upstream belt %s",loopcounter,belt_string(next_belt)))
         if not check_is_belt_deconstructable(next_belt, drill, deconstruct_wired) then
           -- Found a belt that has another target.  We can't remove any belts up this tree, including this next_start_belt.
           -- Also don't check any belts that are downstream of our current next_start_belt because something upstream is in use
@@ -398,19 +418,62 @@ local function deconstruct_belts(drill)
       
       -- 3c. If no other users were found, deconstruct all the upstream belts, 
       --   including the one we started at if it's sideload-safe, since if we got here we did not find any other users attached
+      --   ALSO need to account for any new downstream belts from splitters found upstream
       if not belt_in_use then
-        for _,belt in pairs(upstream_belts_to_deconstruct) do
-          table.insert(to_deconstruct_list, belt)
-          to_deconstruct_map[belt.unit_number] = true
+        if #upstream_belts_to_deconstruct > 1 then
+          --log_belts(upstream_belts_to_deconstruct, string.format("Loop %d upstream_belts_to_deconstruct",loopcounter))
         end
+        for _,belt in pairs(upstream_belts_to_deconstruct) do
+          if not to_deconstruct_map[belt.unit_number] then
+            table.insert(to_deconstruct_list, belt)
+            to_deconstruct_map[belt.unit_number] = true
+          end
+          
+        end
+        -- Once all the upstream belts are added to the list of already-checked belts,
+        -- look at their downstream belts to see if there are any new ones
+        
+        for _,belt in pairs(upstream_belts_to_deconstruct) do
+          local outputs = beltutil.get_belt_outputs(belt, to_deconstruct_map)
+          for _,downstreambelt in pairs(outputs) do
+            if downstreambelt ~= next_start_belt then
+              --log(string.format("Loop %d Adding downstream belt found while adding upstream belts %s",loopcounter,belt_string(downstreambelt)))
+              table.insert(downstream_belts_to_check,downstreambelt)
+            end
+          end
+        end
+        
+        -- SKIP THIS PART since we ALWAYS find the belts downstream of the starting belt (it's included in the upstream belts we look downstream from)
+        -- Keep looking downstream, even if this particular isn't sideload safe. If the next belt can be deconstructed then it doesn't matter.
+        --for counter,belt in pairs(next_start_outputs) do
+        --  if belt ~= next_start_belt then
+        --    local found = false
+        --    for _,downstreambelt in pairs(downstream_belts_to_check) do
+        --      if belt == downstreambelt then
+        --        found = true
+        --        break
+        --      end
+        --    end
+        --    if found == false then
+        --      for _,upstreambelt in pairs(upstream_belts_to_deconstruct) do
+        --        if belt == upstreambelt then
+        --          found = true
+        --          break
+        --        end
+        --      end
+        --    end
+        --    if found == false then
+        --      log(string.format("Loop %d Adding downstream belt from next_start_outputs %s",loopcounter,belt_string(belt)))
+        --      table.insert(downstream_belts_to_check, belt)
+        --    end
+        --  end
+        --end
+        
         upstream_belts_checked = {}
         upstream_belts_to_deconstruct = {}
       
-      -- Keep looking downstream, even if this particular isn't sideload safe. If the next belt can be deconstructed then it doesn't matter.
-        for _,belt in pairs(next_start_outputs) do
-          table.insert(downstream_belts_to_check, belt)
-        end
       end
+      log_belts(to_deconstruct_list, string.format("Loop %d END to_deconstruct_list",loopcounter))
     end
   end
   
