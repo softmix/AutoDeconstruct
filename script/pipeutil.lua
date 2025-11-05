@@ -312,18 +312,24 @@ function pipeutil.choose_pipe(drill, pipes_to_build)
         if valid_pipes[item.name] and item.count > available_pipe.count and item.count >= pipes_needed then
           available_pipe = table.deepcopy(item)
         end
+        if item.name == default_pipe.name and item.count >= pipes_needed then
+          default_pipe.count = item.count
+        end
       end
     end
   end
   
-  if available_pipe.name then
+  if default_pipe.name and default_pipe.count > 0 then
+    debug_message_with_position(drill, "Selected available default pipe "..serpent.line(default_pipe).." from among "..serpent.line(valid_pipes).." to connect neighbors")
+    return default_pipe
+  elseif available_pipe.name then
     debug_message_with_position(drill, "Selected available pipe "..serpent.line(available_pipe).." from among "..serpent.line(valid_pipes).." to connect neighbors")
     return available_pipe
   elseif default_pipe.name then
-    debug_message_with_position(drill, "Selected default pipe "..serpent.line(default_pipe).." from among "..serpent.line(valid_pipes).." to connect neighbors")
+    debug_message_with_position(drill, "Selected default pipe ghost "..serpent.line(default_pipe).." from among "..serpent.line(valid_pipes).." to connect neighbors")
     return default_pipe
   else
-    debug_message_with_position(drill, "No valid pipe to infill depleted fluid miner.")
+    debug_message_with_position(drill, "No valid pipe type to infill this depleted fluid drill.")
     return nil
   end
 end
