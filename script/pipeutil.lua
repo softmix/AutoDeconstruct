@@ -297,8 +297,11 @@ function pipeutil.choose_pipe(drill, pipes_to_build)
   
   -- Find the networks that cover the whole drill
   local box = snap_box_to_grid(drill.selection_box)
-  local networks = list_intersection{ drill.surface.find_logistic_networks_by_construction_area(vectorAdd(vectorSub(box.left_top, drill.position), {0.5,0.5}), drill.force), 
-                                      drill.surface.find_logistic_networks_by_construction_area(vectorSub(vectorSub(box.right_bottom, drill.position), {0.5,0.5}), drill.force)}
+  local area_left_top = vectorAdd(box.left_top, {0.5,0.5})
+  local area_right_bottom = vectorSub(box.right_bottom, {0.5,0.5})
+  local networks = list_intersection{ drill.surface.find_logistic_networks_by_construction_area(area_left_top, drill.force), 
+                                      drill.surface.find_logistic_networks_by_construction_area(area_right_bottom, drill.force)}
+  --debug_message_with_position(drill, "Area {"..util.positiontostr(area_left_top)..","..util.positiontostr(area_right_bottom).." is covered by "..tostring(#networks).." construction networks")
   -- Now see what pipes are available in each network
   -- Only stationary networks of this force, so there should only be one
   -- Choose whichever pipe has the most available and at least the right amount
