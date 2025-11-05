@@ -473,7 +473,7 @@ local function deconstruct_belts(drill)
         upstream_belts_to_deconstruct = {}
       
       end
-      log_belts(to_deconstruct_list, string.format("Loop %d END to_deconstruct_list",loopcounter))
+      --log_belts(to_deconstruct_list, string.format("Loop %d END to_deconstruct_list",loopcounter))
     end
   end
   
@@ -611,7 +611,11 @@ local function order_deconstruction(drill)
   end
   
   if drill.order_deconstruction(drill.force) then
-    deconstruct_tiles(drill)
+    -- tile deconstruction order would also destroy pipe ghosts, so skip fluid drills
+    if #pipe_ghosts == 0 then
+      deconstruct_tiles(drill)
+    end
+    
     if drill and drill.valid then
       debug_message_with_position(drill, "marked for deconstruction")
       -- Check for inserters providing fuel to this miner
