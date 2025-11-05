@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.0.10
+Date: 2025-10-31
+  Changes:
+    - Updated translations from Crowdin.
+  Bugfixes:
+    - Fixed that deconstructing tiles would also destroy pipe ghosts. When pipe ghosts are placed, no tiles are deconstructed anymore.
+    - Fixed that wrong logistic network was used to determine available pipe types.
+    - Fixed that default pipe was not given preference when enough items were available.
+---------------------------------------------------------------------------------------------------
 Version: 1.0.9
 Date: 2025-10-24
   Bugfixes:
