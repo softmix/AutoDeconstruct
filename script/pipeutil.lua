@@ -241,7 +241,8 @@ end
 function pipeutil.choose_pipe(drill, pipes_to_build)
 
   --log(serpent.line(pipes_to_build))
-  -- Find which pipe categories can be used by each connector
+
+  -- STEP 1: Find which pipe categories can be used by each connector
   local target_cat_sets = {}
   for k=1,#pipes_to_build do
     target_cat_sets[k] = pipes_to_build[k].categories
@@ -274,10 +275,28 @@ function pipeutil.choose_pipe(drill, pipes_to_build)
   end
   --log(serpent.line(valid_pipes))
   
+  -- STEP 2: Check surface build conditions
+  local surface = drill.surface
+  local tile = surface.get_tile(vectorAdd(drill.position, next(pipes_to_build).offset))
+  for pipe_name,_ in pairs(valid_pipes) do
+    local pipe_layers = prototypes.entity[pipe_name].collision_mask.layers
+    for layer,_ in pairs(pipe_layers) do
+      if tile.collides_with(layer) then
+        --game.print("can't build "..pipe_name.." on "..tile.name)
+        valid_pipes[pipe_name] = nil
+        break
+      end
+    end
+  end
+
   -- Make sure the resulting list of pipes includes something real
-  if table_size(valid_pipes) == 0 then return nil end
+  if table_size(valid_pipes) == 0 then
+    debug_message_with_position(drill, "can't find valid pipe type to build")
+    
+    return nil 
+  end
   
-  -- Pick the first applicable default pipe
+  -- STEP 3: Pick the first applicable default pipe
   local chosen_default = nil
   for _,name in pairs(storage.default_pipes) do
     if valid_pipes[name] then
