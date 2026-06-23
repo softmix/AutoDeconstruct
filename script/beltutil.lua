@@ -13,7 +13,7 @@ function beltutil.get_belt_outputs(belt, exclude)
     end
   end
   if belt.type == "underground-belt" and belt.belt_to_ground_type == "input" then
-    local neighbor = belt.neighbours
+    local neighbor = belt.underground_belt_neighbour
     if neighbor and not (exclude and exclude[neighbor.unit_number]) then
       table.insert(outputs,neighbor)  -- insert the output undie for this input undie, since that is downstream
     end
@@ -29,7 +29,7 @@ function beltutil.get_belt_inputs(belt, exclude)
     end
   end
   if belt.type == "underground-belt" and belt.belt_to_ground_type == "output" then
-    local neighbor = belt.neighbours
+    local neighbor = belt.underground_belt_neighbour
     if neighbor and not (exclude and exclude[neighbor.unit_number]) then
       table.insert(inputs,neighbor)  -- insert the input undie for this output undie, since that is upstream
     end
@@ -92,131 +92,65 @@ function beltutil.find_target_line(drill, target)
     -- "right_line" and "left_line" refer to the leftmost input belt
     -- "secondary_*" refer to the rightmost input belt
     -- "*_split_*" refer to the output belts
-    -- When dropping from the side or the front, items only go to the output belts
-    -- When dropping from the back, items go to the input belts
     
-    -- When drop-pos is at 0.5 lengthwise, defaults to input belts
-    -- Divide area into 8 zones for each of the 4 cardinal directions
-    
+    -- In Factorio 2.1, items ALWAYS drop onto the INPUT belt segments, even when pointing directly into the output side.
+    -- Each direction only needs four zones to pick which input lane to use.
     
     if belt_dir == defines.direction.north then
       -- when facing north, outputs are negative y and left lane is negative x
-      -- Check if input or output
-      if drop_pos.y < belt_pos.y then
-        -- Use output belts
-        if drop_pos.x < belt_pos.x-0.5 then
-          target_line_index = defines.transport_line.left_split_line
-        elseif drop_pos.x < belt_pos.x then
-          target_line_index = defines.transport_line.right_split_line
-        elseif drop_pos.x < belt_pos.x+0.5 then
-          target_line_index = defines.transport_line.secondary_left_split_line
-        else
-          target_line_index = defines.transport_line.secondary_right_split_line
-        end
+      -- Use input belts
+      if drop_pos.x < belt_pos.x-0.5 then
+        target_line_index = defines.transport_line.left_line
+      elseif drop_pos.x < belt_pos.x then
+        target_line_index = defines.transport_line.right_line
+      elseif drop_pos.x < belt_pos.x+0.5 then
+        target_line_index = defines.transport_line.secondary_left_line
       else
-        -- Use input belts
-        if drop_pos.x < belt_pos.x-0.5 then
-          target_line_index = defines.transport_line.left_line
-        elseif drop_pos.x < belt_pos.x then
-          target_line_index = defines.transport_line.right_line
-        elseif drop_pos.x < belt_pos.x+0.5 then
-          target_line_index = defines.transport_line.secondary_left_line
-        else
-          target_line_index = defines.transport_line.secondary_right_line
-        end
+        target_line_index = defines.transport_line.secondary_right_line
       end
-    
     elseif belt_dir == defines.direction.south then
       -- when facing south, outputs are positive y and left lane is positive x
-      -- Check if input or output
-      if drop_pos.y > belt_pos.y then
-        -- Use output belts
-        if drop_pos.x > belt_pos.x+0.5 then
-          target_line_index = defines.transport_line.left_split_line
-        elseif drop_pos.x > belt_pos.x then
-          target_line_index = defines.transport_line.right_split_line
-        elseif drop_pos.x > belt_pos.x-0.5 then
-          target_line_index = defines.transport_line.secondary_left_split_line
-        else
-          target_line_index = defines.transport_line.secondary_right_split_line
-        end
+      -- Use input belts
+      if drop_pos.x > belt_pos.x+0.5 then
+        target_line_index = defines.transport_line.left_line
+      elseif drop_pos.x > belt_pos.x then
+        target_line_index = defines.transport_line.right_line
+      elseif drop_pos.x > belt_pos.x-0.5 then
+        target_line_index = defines.transport_line.secondary_left_line
       else
-        -- Use input belts
-        if drop_pos.x > belt_pos.x+0.5 then
-          target_line_index = defines.transport_line.left_line
-        elseif drop_pos.x > belt_pos.x then
-          target_line_index = defines.transport_line.right_line
-        elseif drop_pos.x > belt_pos.x-0.5 then
-          target_line_index = defines.transport_line.secondary_left_line
-        else
-          target_line_index = defines.transport_line.secondary_right_line
-        end
+        target_line_index = defines.transport_line.secondary_right_line
       end
-    
     elseif belt_dir == defines.direction.east then
       -- when facing east, outputs are positive x and left lane is negative y
-      -- Check if input or output
-      if drop_pos.x > belt_pos.x then
-        -- Use output belts
-        if drop_pos.y < belt_pos.y-0.5 then
-          target_line_index = defines.transport_line.left_split_line
-        elseif drop_pos.y < belt_pos.y then
-          target_line_index = defines.transport_line.right_split_line
-        elseif drop_pos.y < belt_pos.y+0.5 then
-          target_line_index = defines.transport_line.secondary_left_split_line
-        else
-          target_line_index = defines.transport_line.secondary_right_split_line
-        end
+      -- Use input belts
+      if drop_pos.y < belt_pos.y-0.5 then
+        target_line_index = defines.transport_line.left_line
+      elseif drop_pos.y < belt_pos.y then
+        target_line_index = defines.transport_line.right_line
+      elseif drop_pos.y < belt_pos.y+0.5 then
+        target_line_index = defines.transport_line.secondary_left_line
       else
-        -- Use input belts
-        if drop_pos.y < belt_pos.y-0.5 then
-          target_line_index = defines.transport_line.left_line
-        elseif drop_pos.y < belt_pos.y then
-          target_line_index = defines.transport_line.right_line
-        elseif drop_pos.y < belt_pos.y+0.5 then
-          target_line_index = defines.transport_line.secondary_left_line
-        else
-          target_line_index = defines.transport_line.secondary_right_line
-        end
+        target_line_index = defines.transport_line.secondary_right_line
       end
-    
     elseif belt_dir == defines.direction.west then
       -- when facing west, outputs are negative x and left lane is positive y
-      -- Check if input or output
-      if drop_pos.x < belt_pos.x then
-        -- Use output belts
-        if drop_pos.y > belt_pos.y+0.5 then
-          target_line_index = defines.transport_line.left_split_line
-        elseif drop_pos.y > belt_pos.y then
-          target_line_index = defines.transport_line.right_split_line
-        elseif drop_pos.y > belt_pos.y-0.5 then
-          target_line_index = defines.transport_line.secondary_left_split_line
-        else
-          target_line_index = defines.transport_line.secondary_right_split_line
-        end
+      -- Use input belts
+      if drop_pos.y > belt_pos.y+0.5 then
+        target_line_index = defines.transport_line.left_line
+      elseif drop_pos.y > belt_pos.y then
+        target_line_index = defines.transport_line.right_line
+      elseif drop_pos.y > belt_pos.y-0.5 then
+        target_line_index = defines.transport_line.secondary_left_line
       else
-        -- Use input belts
-        if drop_pos.y > belt_pos.y+0.5 then
-          target_line_index = defines.transport_line.left_line
-        elseif drop_pos.y > belt_pos.y then
-          target_line_index = defines.transport_line.right_line
-        elseif drop_pos.y > belt_pos.y-0.5 then
-          target_line_index = defines.transport_line.secondary_left_line
-        else
-          target_line_index = defines.transport_line.secondary_right_line
-        end
+        target_line_index = defines.transport_line.secondary_right_line
       end
-    
     end
-  
   end
   -- Return the selected transport line reference
   if target_line_index > 0 then
     return target.get_transport_line(target_line_index)
   end
-
 end
-
 
 
 function beltutil.is_belt_empty(belt)
@@ -319,7 +253,6 @@ function beltutil.is_belt_empty(belt)
   end
   return true
 end
-
 
 
 return beltutil

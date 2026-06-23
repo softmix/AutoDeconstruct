@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.0
+Date: 2026-06-23
+  Changes:
+    - Updated to Factorio 2.1
+    - API changes for LuaEntity::get_fluid_box_pipe_connections(), LuaEntity::get_fluid_box_prototypes(), LuaEntity:underground_belt_neighbour.
+    - Account for the fact that drills always drop on splitter inputs, no matter what orientation they are.
+---------------------------------------------------------------------------------------------------
 Version: 1.0.13
 Date: 2026-06-23
   Changes:

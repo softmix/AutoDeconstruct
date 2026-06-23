@@ -187,11 +187,11 @@ function pipeutil.find_pipes_to_build(drill)
 
   -- With the new API, only one check is needed to get the coordinates of each fluidbox that is connected to any fluidbox (including ghosts and undergrounds!)
   local pipes_to_build = {}
-  for k, connection in pairs(drill.fluidbox.get_pipe_connections(1)) do
+  for k, connection in pairs(drill.get_fluid_box_pipe_connections(1)) do
     if connection.connection_type == "normal" and connection.target then
       -- Determine the connection categories of the other pipe connection
       -- Find which pipe_connection prototype in the connected entity is connected to this one.
-      local target_fluidbox_prototypes = connection.target.get_prototype(connection.target_fluidbox_index)
+      local target_fluidbox_prototypes = connection.target.get_fluid_box_prototype(connection.target_fluidbox_index)
       local merged_connection_definition_list = {}
       if target_fluidbox_prototypes.object_name then
         merged_connection_definition_list = target_fluidbox_prototypes.pipe_connections

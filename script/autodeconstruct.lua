@@ -545,7 +545,8 @@ local function order_deconstruction(drill)
   local has_fluid = false
   local pipeType = nil
   local pipesToBuild = nil
-  if drill.fluidbox and #drill.fluidbox > 0 then
+  -- TODO: Existing pipe logic only works for drills with a single fluid. If a new drill is created with a "spent fluid", new logic will be needed.
+  if drill.fluids_count == 1 then
     has_fluid = true
     if not settings.global['autodeconstruct-remove-fluid-drills'].value then
       debug_message_with_position(drill, "has a fluidbox and fluid deconstruction is not enabled, skipping")
