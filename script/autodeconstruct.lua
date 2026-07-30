@@ -140,7 +140,6 @@ local function find_target(entity)
     -- Only care about chests that loaders are filling
     local container = entity.loader_container
     if container and container.valid then
-      game.print('find_target of '..tostring(entity)..' found container '..tostring(container))
       return container
     else
       -- Look for a ghost
