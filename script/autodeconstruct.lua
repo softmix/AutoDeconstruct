@@ -4,7 +4,7 @@ autodeconstruct = {}
 
 local math2d = require("math2d")
 
-local blacklist_surface_prefixes = {"BPL_TheLab", "bpsb%-lab"}
+local blacklist_surface_prefixes = prototypes.mod_data["autodeconstruct-blacklist"].data.surfaces
 local RESOURCE_CHECK_TIME = 15
 local RESOURCE_EJECT_TIME = 30
 local DECONSTRUCT_TIMEOUT = 1800
