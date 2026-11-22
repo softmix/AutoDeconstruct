@@ -6,11 +6,12 @@ local math2d = require("math2d")
 
 local blacklist_surface_prefixes = prototypes.mod_data["autodeconstruct-blacklist"].data.surfaces
 local RESOURCE_CHECK_TIME = 15
-local RESOURCE_EJECT_TIME = 30
+local RESOURCE_EJECT_TIME = 1
+local DRILL_RECHECK_TIME = 59
+local CHEST_DECON_TIME = 60
 local DECONSTRUCT_TIMEOUT = 1800
-local BELT_CHECK_TIME = 15
-local BELT_INACTIVITY_TIME = 180
-local BELT_TIMEOUT = 1800
+local BELT_INACTIVITY_TIME = 3*60*60
+local BELT_TIMEOUT = 5*60*60
 
 
 local function map_to_string(t)
@@ -214,6 +215,7 @@ local function queue_deconstruction(drill)
   local timeout_tick = decon_tick + DECONSTRUCT_TIMEOUT  -- wait at most 30 seconds for items to clear out
   -- Drill to deconstruct
   local target = find_target(drill)
+  game.print(target)
   -- Belt to deconstruct
   local target_line = beltutil.find_target_line(drill, target)
   if target_line then
@@ -509,7 +511,7 @@ local function deconstruct_belts(drill)
   -- If there are loops or items stuck behind underground belts, those will wait for the timeout.
   -- Every time we successfully deconstruct an empty belt, extend the timeout a bit.
   -- Is there any sorting we can do to make it easier to find the next one that will be empty?
-  table.insert(storage.drill_queue, {tick=game.tick+BELT_CHECK_TIME, timeout=game.tick+BELT_TIMEOUT, belt_list=to_deconstruct_list})
+  table.insert(storage.drill_queue, {timeout=game.tick+BELT_TIMEOUT, belt_list=to_deconstruct_list})
   
 end
   
@@ -554,8 +556,23 @@ end
 
 
 local function order_deconstruction(drill)
+  if not drill.minable then
+    debug_message_with_position(drill, "is not minable, skipping")
+    return
+  end
+
+  if not drill.prototype.selectable_in_game then
+    debug_message_with_position(drill, "is not selectable in game, skipping")
+    return
+  end
+
+  if drill.has_flag("not-deconstructable") then
+    debug_message_with_position(drill, "is flagged as not-deconstructable, skipping")
+    return
+  end
+
   if drill.to_be_deconstructed(drill.force) then
-    debug_message_with_position(drill, "already marked, skipping")
+    debug_message_with_position(drill, "already marked for deconstruction, skipping")
     return
   end
   
@@ -567,7 +584,18 @@ local function order_deconstruction(drill)
     end
   end
   
-  
+  if not settings.global['autodeconstruct-remove-wired'].value then
+    if drill.get_circuit_network(defines.wire_connector_id.circuit_red) or drill.get_circuit_network(defines.wire_connector_id.circuit_green) then
+      debug_message_with_position(drill, "is hooked up to the circuit network and wire deconstruction is not enabled, skipping")
+      return
+    end
+  end
+
+  if settings.global['autodeconstruct-preserve-inserter-chains'].value and drill.burner and #find_extracting(drill)>0 then
+    debug_message_with_position(drill, "is part of inserter chain, skipping")
+    return
+  end
+
   local has_fluid = false
   local pipeType = nil
   local pipesToBuild = nil
@@ -587,35 +615,6 @@ local function order_deconstruction(drill)
       debug_message_with_position(drill, "requires pipes and no pipe type is given, skipping")
       return
     end
-  end
-
-  
-  
-  if not settings.global['autodeconstruct-remove-wired'].value then
-    if drill.get_circuit_network(defines.wire_connector_id.circuit_red) or drill.get_circuit_network(defines.wire_connector_id.circuit_green) then
-      debug_message_with_position(drill, "is hooked up to the circuit network and wire deconstruction is not enabled, skipping")
-      return
-    end
-  end
-
-  if not drill.minable then
-    debug_message_with_position(drill, "is not minable, skipping")
-    return
-  end
-
-  if not drill.prototype.selectable_in_game then
-    debug_message_with_position(drill, "is not selectable in game, skipping")
-    return
-  end
-
-  if drill.has_flag("not-deconstructable") then
-    debug_message_with_position(drill, "is flagged as not-deconstructable, skipping")
-    return
-  end
-
-  if settings.global['autodeconstruct-preserve-inserter-chains'].value and drill.burner and #find_extracting(drill)>0 then
-    debug_message_with_position(drill, "is part of inserter chain, skipping")
-    return
   end
 
   -- end guards
@@ -670,70 +669,75 @@ end
 
 
 -- Queue contents:
+-- Check Drill: {check_drill, tick}
+-- Deconstruct Drill: {drill, tick, target, 
 -- Drill: {tick=decon_tick, timeout=timeout_tick, drill=drill, target=target, target_lp=lp, target_line=target_line, pipes={}}
 function autodeconstruct.process_queue()
   if storage.drill_queue and next(storage.drill_queue) then
     for i, entry in pairs(storage.drill_queue) do
       
       if entry.check_drill then
-        if not entry.check_drill.valid then
-          table.remove(storage.drill_queue, i)
-          debug_message_with_position(entry.check_drill, "invalid check drill removed from queue")
-          break
-        elseif game.tick >= entry.tick then
-          if entry.check_drill.status == defines.entity_status.no_minable_resources then
-            if storage.debug then msg_all({"autodeconstruct-debug", util.positiontostr(entry.check_drill.position) .. " found no compatible resources, deconstructing"}) end
+        if game.tick >= entry.tick then
+          if not entry.check_drill.valid then  -- verify drill still exists
+            debug_message_with_position(entry.check_drill, "invalid drill removed from check_drill queue")
+            table.remove(storage.drill_queue, i)
+            break
+          elseif entry.check_drill.status == defines.entity_status.no_minable_resources then
+            -- if drill has run out of resources, move to deconstruction queue
+            if storage.debug then msg_all({"autodeconstruct-debug", util.positiontostr(entry.check_drill.position) .. " is out of resources, deconstructing"}) end
             queue_deconstruction(entry.check_drill)
-          else
+            table.remove(storage.drill_queue, i)
+            break
+          elseif entry.check_drill.status == defines.entity_status.working then
+            -- if drill is starts working again, remove it from the check queue
             if storage.debug then msg_all({"autodeconstruct-debug", util.positiontostr(entry.check_drill.position) .. " still has resources"}) end
+            table.remove(storage.drill_queue, i)
+            break
+          else
+            -- any other state means we can't tell if drill is out of resources yet, so check again later by a random amount
+            entry.tick = game.tick + DRILL_RECHECK_TIME + math.random(DRILL_RECHECK_TIME)
           end
-          table.remove(storage.drill_queue, i)
-          break
         end
         
       elseif entry.drill then
         local deconstruct_drill = false
         
-        if not entry.drill.valid then
-          -- no valid drill, or drill still has resources. purge from queue
-          table.remove(storage.drill_queue, i)
-          break
+        if game.tick >= entry.tick then
         
-        elseif game.tick >= entry.timeout then
-          -- When timeout occurs, deconstruct everything
-          deconstruct_drill = true
-          
-        elseif game.tick >= entry.tick then
-          -- Check conditions to see if we can deconstruct early
-          if entry.target then
-            if entry.target.valid then
-              local inv = entry.target.get_inventory(defines.inventory.chest)
-              if not inv or inv.is_empty() then
-                deconstruct_drill = true  -- chest is empty
-              elseif entry.lp and table_size(entry.lp.targeted_items_pickup)==0 then
-                deconstruct_drill = true  -- no robots coming to pick up
-              end
-            else
-              -- Target is not valid, deconstruct anyways
-              deconstruct_drill = true
-            end
-          elseif entry.target_line then
-            if entry.target_line.valid then
-              if #entry.target_line == 0 then
-                deconstruct_drill = true  -- belt transport line is empty
-              end
-            else
-              deconstruct_drill = true
-            end
-          else
-            deconstruct_drill = true -- no output chest or belt needs to be checked, deconstruct immediately
+          if not entry.drill.valid then  -- verify drill still exists
+            table.remove(storage.drill_queue, i)
+            break
           end
-        end
+
+          if game.tick >= entry.timeout then
+            -- When timeout occurs, deconstruct everything
+            deconstruct_drill = true
+          else
+            -- If we got to this point, the drill has already ejected its last ore
+            if settings.global['autodeconstruct-remove-target'].value and entry.target and entry.target.valid then
+              -- Wait for output chest to empty if we want to deconstruct it too
+              local inv = entry.target.get_inventory(defines.inventory.chest)
+              if not inv then
+                deconstruct_drill = true
+              elseif not entry.chest_wait then
+                if inv.is_empty() then
+                  -- Wait another second for inserter to finish placing last item
+                  entry.timeout = math.min(entry.timeout, game.tick+CHEST_DECON_TIME)
+                  entry.chest_wait = true
+                elseif entry.lp and table_size(entry.lp.targeted_items_pickup)==0 then
+                  deconstruct_drill = true  -- no logistic robots coming to pick up, deconstruct early
+                end
+              end
+            else
+              deconstruct_drill = true -- no output chest or belt needs to be checked, deconstruct immediately
+            end
+          end
         
-        if deconstruct_drill then
-          order_deconstruction(entry.drill)
-          table.remove(storage.drill_queue, i)
-          break
+          if deconstruct_drill then
+            order_deconstruction(entry.drill)
+            table.remove(storage.drill_queue, i)
+            break
+          end
         end
       
       elseif entry.belt_list then

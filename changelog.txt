@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.3
+Date: 2026-11-22
+  Changes:
+    - Updated translations from Crowdin.
+    - Increased belt deconstruction timeout from 30 seconds to 5 minutes.
+  Bugfixes:
+    - Fixed that drills depleted while output is full/belts backed up would never be deconstructed.
+---------------------------------------------------------------------------------------------------
 Version: 1.1.2
 Date: 2026-07-29
   Changes:
