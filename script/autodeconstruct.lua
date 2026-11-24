@@ -215,7 +215,6 @@ local function queue_deconstruction(drill)
   local timeout_tick = decon_tick + DECONSTRUCT_TIMEOUT  -- wait at most 30 seconds for items to clear out
   -- Drill to deconstruct
   local target = find_target(drill)
-  game.print(target)
   -- Belt to deconstruct
   local target_line = beltutil.find_target_line(drill, target)
   if target_line then
