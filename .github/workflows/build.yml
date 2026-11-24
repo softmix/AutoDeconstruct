@@ -1,0 +1,49 @@
+name: Build and verify mod
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+permissions:
+  contents: read # Required for checking out the repository
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Create mod ZIP
+        id: package
+        run: |
+          name=$(jq -er '.name' info.json)
+          version=$(jq -er '.version' info.json)
+          mod="${name}_${version}"
+          make MOD_ZIP
+          mkdir -p "$RUNNER_TEMP/mods"
+          mv "$mod.zip" "$RUNNER_TEMP/mods"
+          echo "name=$mod" >> "$GITHUB_OUTPUT"
+          echo "mod_name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Upload mod ZIP
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: ${{ runner.temp }}/mods/${{ steps.package.outputs.name }}.zip
+          archive: false
+          if-no-files-found: error
+
+      - name: Start a new game for 60 ticks
+        env:
+          MOD_NAME: ${{ steps.package.outputs.mod_name }}
+        run: |
+          docker run --rm \
+            -v "$RUNNER_TEMP/mods:/opt/factorio/mods" \
+            --entrypoint /opt/factorio/bin/x64/factorio factoriotools/factorio:latest \
+            --test-scenario base/freeplay \
+            --test-ticks 60 | tee "$RUNNER_TEMP/factorio.log"
+          grep -F "Checksum for script __${MOD_NAME}__/control.lua:" "$RUNNER_TEMP/factorio.log"
+          grep -F "Ran 60 ticks without the test finishing" "$RUNNER_TEMP/factorio.log"
